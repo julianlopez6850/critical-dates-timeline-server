@@ -14,6 +14,15 @@ router.get("/all", async (req, res) => {
     res.json(files);
 });
 
+// Get single file by fileNumber.
+router.get("/", async (req, res) => {
+    const { fileNumber } = req.query;
+
+    const file = await Files.findOne({ where: { fileNumber: fileNumber } });
+    
+    res.json(file);
+});
+
 
 // Post new File
 router.post("/", async(req, res) => {
@@ -36,9 +45,17 @@ router.post("/", async(req, res) => {
 
         await Files.create(newFile);
 
-        if(newFile.depositInital) {        
+        if(newFile.effective) {        
             await Dates.create({
-                date: newFile.depositInital,
+                date: newFile.effective,
+                fileNumber: newFile.fileNumber,
+                type: "Effective",
+                isClosed: true
+            });
+        }
+        if(newFile.depositInitial) {        
+            await Dates.create({
+                date: newFile.depositInitial,
                 fileNumber: newFile.fileNumber,
                 type: "Escrow",
                 prefix: "First ",
