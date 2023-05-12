@@ -50,6 +50,7 @@ router.post("/", async(req, res) => {
                 date: newFile.effective,
                 fileNumber: newFile.fileNumber,
                 type: "Effective",
+                prefix: '',
                 isClosed: true
             });
         }
@@ -85,6 +86,7 @@ router.post("/", async(req, res) => {
                 date: newFile.inspection,
                 fileNumber: newFile.fileNumber,
                 type: "Inspection",
+                prefix: '',
                 isClosed: false
             });
         }
@@ -93,6 +95,7 @@ router.post("/", async(req, res) => {
                 date: newFile.closing,
                 fileNumber: newFile.fileNumber,
                 type: "Closing",
+                prefix: '',
                 isClosed: false
             });
         }
@@ -103,6 +106,80 @@ router.post("/", async(req, res) => {
         return res.status(400).json({ error: err });
     }
 
+});
+
+// Update a file
+router.put("/", (req, res) => {
+    const { oldFileNumber } = req.body;
+
+    try {
+        // update fields of File record.
+        Files.update(
+            req.body,
+            { where: { fileNumber: oldFileNumber } }
+        )
+        .then( async () => {
+            // then update the fields of each date record associated with that file
+            const { effective, depositInitial, depositSecond, depositThird, inspection, closing } = req.body;
+
+            const dates = {
+                effective: effective,
+                depositInitial: depositInitial,
+                depositSecond: depositSecond,
+                depositThird: depositThird,
+                inspection: inspection,
+                closing: closing,
+            }
+
+            for(const item in dates) {
+                if(!dates[item])
+                    continue;
+
+                const existingDate = await Dates.findOne({
+                    where: {
+                        fileNumber: oldFileNumber,
+                        type: item.startsWith('deposit') ? 'Escrow' : item.charAt(0).toUpperCase() + item.slice(1),
+                        prefix: !item.startsWith('deposit') ? '' :
+                            item.slice(7) === 'Initial' ? 'First ' : item.slice(7) + ' '
+                    }
+                })
+
+                if(existingDate) {
+                    await Dates.update(
+                        {
+                            fileNumber: req.body.fileNumber,
+                            date: dates[item]
+                        },
+                        {
+                            where: {
+                                fileNumber: oldFileNumber,
+                                type: item.startsWith('deposit') ? 'Escrow' : item.charAt(0).toUpperCase() + item.slice(1),
+                                prefix: !item.startsWith('deposit') ? '' :
+                                    item.slice(7) === 'Initial' ? 'First ' : (item.slice(7) + ' ')
+
+                            }
+                        }
+                    )
+                } else {
+                    await Dates.create({
+                        date: dates[item],
+                        fileNumber: req.body.fileNumber,
+                        type: item.startsWith('deposit') ? 'Escrow' : item.charAt(0).toUpperCase() + item.slice(1),
+                        prefix: !item.startsWith('deposit') ? '' :
+                            item.slice(7) === 'Initial' ? 'First ' : item.slice(7) + ' ',
+                        isClosed: false
+                    });
+                }
+            }
+        }).catch((err) => {
+            console.log(err)
+        })
+
+        delete req.body.oldFileNumber;
+    } catch {
+        return res.status(400).json({ errorMessage: "Error updating file", error: err });
+    }
+    return res.status(200).json({ success: "File updated.", file:  req.body });
 });
 
 module.exports = router;
