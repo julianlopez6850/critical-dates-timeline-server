@@ -25,7 +25,7 @@ router.get("/all", async (req, res) => {
 router.get("/", async (req, res) => {
 
     try {
-        const { startDate, endDate, type} = req.query;
+        const { startDate, endDate, type, isClosed} = req.query;
 
         var datesQuery = {}
 
@@ -39,22 +39,28 @@ router.get("/", async (req, res) => {
             datesQuery.type = type;
         }
 
+        if(isClosed && isClosed !== '') {
+            datesQuery.isClosed = isClosed === "true" ? 1 : 0;
+        }
+
         const criticalDates = await Dates.findAll({
             where: datesQuery
         });
-
-        console.log(datesQuery);
         
         // Get file info for each date
         for(var date of criticalDates) {
-            console.log(date.dataValues);
-
             const fileInfo = await Files.findOne({
                 where: { fileNumber: date.fileNumber }
             })
 
-            for(const info in fileInfo.dataValues) {
-                date.dataValues[`${info}`] = fileInfo.dataValues[info]
+            if(fileInfo) {
+                for(const info in fileInfo.dataValues) {
+                    if(info === 'isClosed') {
+                        date.dataValues['isFileClosed'] = fileInfo.dataValues[info]
+                    } else {
+                        date.dataValues[`${info}`] = fileInfo.dataValues[info]
+                    }
+                }
             }
         }
 
