@@ -72,4 +72,26 @@ router.get("/", async (req, res) => {
     }
 });
 
+router.put("/", async (req, res) => {
+    const { fileNumber, type, prefix, date, isClosed } = req.body;
+
+    var updatedValues = {}
+
+    if(date) {
+        updatedValues.date = date;
+    }
+    if(isClosed) {
+        updatedValues.isClosed = isClosed
+    }
+
+    Dates.update({ date: date, isClosed: isClosed },
+        { where: { fileNumber: fileNumber, type: type, prefix: prefix }}
+    ).then(() => {
+        return res.status(200).json({ success: "Successfully updated date." })
+    }).catch((err) => {
+        return res.status(400).json({ error: err })
+    })
+
+})
+
 module.exports = router;
