@@ -3,6 +3,7 @@ module.exports = (sequelize, DataTypes) => {
         fileNumber: { // ex.: 23001
             type: DataTypes.NUMERIC,
             allowNull: false,
+            primaryKey: true,
         },
         fileRef: { // ex.: "John Doe p/f Jane Doe"
             type: DataTypes.STRING,
@@ -49,7 +50,7 @@ module.exports = (sequelize, DataTypes) => {
             allowNull: false,
         },
         notes: { // ex.: "PP: $1,000,000.00, 1st Deposit: $25,000,000.00, Escrow Agent: Joan Doe Title Group"
-            type: DataTypes.STRING,
+            type: DataTypes.TEXT('long'),
             allowNull: false,
         },
         isClosed: { // 0 = closed, 1 = open
