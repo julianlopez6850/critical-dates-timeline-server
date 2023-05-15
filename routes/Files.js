@@ -132,19 +132,31 @@ router.put("/", (req, res) => {
         )
         .then( async () => {
             // then update the fields of each date record associated with that file
-            const { effective, depositInitial, depositSecond, depositThird, inspection, closing } = req.body;
+            const { effective, 
+                depositInitial, 
+                depositSecond, 
+                depositThird, 
+                inspection, 
+                closing, 
+                isClosedEffective, 
+                isClosedDepositInitial, 
+                isClosedDepositSecond, 
+                isClosedDepositThird, 
+                isClosedInspection, 
+                isClosedClosing, 
+            } = req.body;
 
             const dates = {
-                effective: effective,
-                depositInitial: depositInitial,
-                depositSecond: depositSecond,
-                depositThird: depositThird,
-                inspection: inspection,
-                closing: closing,
+                effective: { date: effective, isClosed: isClosedEffective },
+                depositInitial: { date: depositInitial, isClosed: isClosedDepositInitial },
+                depositSecond: { date: depositSecond, isClosed: isClosedDepositSecond },
+                depositThird: { date: depositThird, isClosed: isClosedDepositThird },
+                inspection: { date: inspection, isClosed: isClosedInspection },
+                closing: { date: closing, isClosed: isClosedClosing },
             }
 
             for(const item in dates) {
-                if(!dates[item])
+                if(!dates[item].date)
                     continue;
 
                 const existingDate = await Dates.findOne({
@@ -160,7 +172,8 @@ router.put("/", (req, res) => {
                     await Dates.update(
                         {
                             fileNumber: req.body.fileNumber,
-                            date: dates[item]
+                            date: dates[item].date,
+                            isClosed: dates[item].isClosed
                         },
                         {
                             where: {
@@ -174,12 +187,12 @@ router.put("/", (req, res) => {
                     )
                 } else {
                     await Dates.create({
-                        date: dates[item],
+                        date: dates[item].date,
                         fileNumber: req.body.fileNumber,
                         type: item.startsWith('deposit') ? 'Escrow' : item.charAt(0).toUpperCase() + item.slice(1),
                         prefix: !item.startsWith('deposit') ? '' :
                             item.slice(7) === 'Initial' ? 'First ' : item.slice(7) + ' ',
-                        isClosed: false
+                        isClosed: dates[item].isClosed
                     });
                 }
             }
