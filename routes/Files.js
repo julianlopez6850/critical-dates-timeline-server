@@ -19,6 +19,18 @@ router.get("/", async (req, res) => {
     const { fileNumber } = req.query;
 
     const file = await Files.findOne({ where: { fileNumber: fileNumber } });
+
+    const dates = await Dates.findAll({
+        where: { fileNumber: fileNumber }
+    })
+
+    file.dataValues.dates = [];
+
+    if(dates) {
+        for(const object of dates) {
+            file.dataValues.dates.push(object);
+        }
+    }
     
     res.json(file);
 });
