@@ -62,11 +62,7 @@ router.get("/", async (req, res) => {
                 where: {
                     [Op.or]: [
                         datesQuery,
-                        {
-                            fileNumber: {
-                                [Op.or]: closedFileNumbers
-                            }
-                        }
+                        { ...datesQuery, isClosed: 0, fileNumber: { [Op.in]: closedFileNumbers } }
                     ]
                 },
                 order: [['date', 'ASC']]
