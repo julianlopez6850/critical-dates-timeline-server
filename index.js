@@ -1,6 +1,7 @@
 const express = require('express');
 const app = express();
 const cors = require("cors");
+const Bree = require('bree')
 
 app.use(express.json());
 app.use(cors({
@@ -16,6 +17,24 @@ const filesRouter = require("./routes/Files");
 app.use("/files", filesRouter);
 const datesRouter = require("./routes/Dates");
 app.use("/dates", datesRouter);
+
+const devCron = '* * * * *';    // development cron; occurs every minute.
+const prodCron = '0 8 * * 1-5';   // production cron; occurs every weekday at 8:00 A.M.
+
+// Email Scheduler
+const bree = new Bree({
+    jobs: [{
+        name: 'sendEmail',
+        cron: prodCron,
+        worker: {
+            workerData: {
+                description: 'Job Started: Send Daily Critical Dates Email'
+            }
+        }
+    }]
+});
+
+bree.start();
 
 db.sequelize.sync().then(() => {
     app.listen(5000, () => {
