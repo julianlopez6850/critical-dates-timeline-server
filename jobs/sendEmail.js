@@ -2,6 +2,7 @@ require("dotenv").config()
 const { workerData } = require("worker_threads");
 const nodeMailer = require("nodemailer");
 const { writeEmail } = require("../helpers/writeEmail");
+const { getTodaysDate } = require('../helpers/getTodaysDate');
 
 async function sendEmail() {
     console.log('Attempting to send email...');
@@ -17,8 +18,8 @@ async function sendEmail() {
         }
     })
     
-    d = new Date();
-    const today = `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`
+    const today = getTodaysDate();
+    const MMDDYY = `${today.slice(-5)}-${today.slice(2,4)}`;
 
     const recipients = process.env.RECIPIENTS.split(' ');
     for(const recipient of recipients) {
@@ -26,7 +27,7 @@ async function sendEmail() {
         await transporter.sendMail({
             from: process.env.FROM_EMAIL,
             to: recipient,
-            subject: `${today} Critical Times Update`,
+            subject: `${MMDDYY} Critical Times Update`,
             html: await writeEmail(recipient),
         }).then(() => {
             console.log(`Email sent successfully to ${recipient}!`)

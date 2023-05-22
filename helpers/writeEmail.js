@@ -1,9 +1,9 @@
 const { Dates, Files } = require('../models');
 const sequelize = require('sequelize');
 const Op = sequelize.Op
+const { getTodaysDate } = require('./getTodaysDate')
 
 const writeEmail = async (recipient) => {
-    //var emailText = `Good morning ${recipient.slice(0,1).toUpperCase() + (recipient.split('@'))[0].slice(1)}!\nHere is your daily critical timeline update:\n\n`
     var emailHtml = `<b style="white-space: pre-line">Good morning ${recipient.slice(0,1).toUpperCase() + (recipient.split('@'))[0].slice(1)}!<br/><br/>` +
         `Below is your daily critical timeline update:<br/><br/>` +
         `<a href=${process.env.URL}>You can also view it on the web at ${process.env.URL}!</a> <--- { Not available yet }<br/><br/>`
@@ -17,8 +17,7 @@ const writeEmail = async (recipient) => {
         closedFileNumbers.push(file.dataValues.fileNumber)
     }
 
-    d = new Date();
-    const today = `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`
+    const today = getTodaysDate();
 
     const isPastDue = await Dates.findAll({
         where: {
@@ -61,15 +60,12 @@ const writeEmail = async (recipient) => {
                 <th width='600px' align='left' style="border:1px solid black">File Reference</th>
             </tr>`
         if(index === 0) {
-            //emailText += '---------- TODAY ----------\n\n'
             emailHtml += `<b style="white-space: pre-line">---------- TODAY ----------</b>${header}`
         }
         if(index === 1) {
-            //emailText += '---------- PAST DUE ----------\n\n'
             emailHtml += `<b style="white-space: pre-line">---------- PAST DUE ----------</b>${header}`
         }
         if(index === 2) {
-            //emailText += '---------- UPCOMING ----------\n\n'
             emailHtml += `<b style="white-space: pre-line">---------- UPCOMING ----------</b>${header}`
         }
         
@@ -91,8 +87,6 @@ const writeEmail = async (recipient) => {
                         date.dataValues[`${info}`] = fileInfo.dataValues[info]
                 }
             }
-
-            //emailText += `${date.dataValues.type === 'Escrow' ? date.dataValues.prefix : ''}${date.dataValues.type} ${date.dataValues.fileNumber} ${date.dataValues.fileRef}\n\n`
 
             emailHtml += `<tr style='${(index % 2 === 0) ? 'background-color:#CCE7FF' : 'background-color:#AACCEE'};'>
                 <td valign='center' style="border:1px solid black">${date.dataValues.type === 'Escrow' ? date.dataValues.prefix : ''}${date.dataValues.type}</td>

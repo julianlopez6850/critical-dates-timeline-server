@@ -18,14 +18,14 @@ app.use("/files", filesRouter);
 const datesRouter = require("./routes/Dates");
 app.use("/dates", datesRouter);
 
-const devCron = '* * * * *';    // development cron; occurs every minute.
-const prodCron = '0 8 * * 1-5';   // production cron; occurs every weekday at 8:00 A.M.
+const develomentCron = '* * * * *';    // occurs every minute.
+const productionCron = '0 8 * * 1-5';   // occurs every weekday at 8:00 A.M.
 
 // Email Scheduler
 const bree = new Bree({
     jobs: [{
         name: 'sendEmail',
-        cron: prodCron,
+        cron: productionCron,
         worker: {
             workerData: {
                 description: 'Job Started: Send Daily Critical Dates Email'
