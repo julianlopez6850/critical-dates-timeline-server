@@ -39,7 +39,7 @@ router.get("/", async (req, res) => {
 
 
 // Post new File
-router.post("/", async(req, res) => {
+router.post("/", async (req, res) => {
     try {
         const newFile = req.body;
 
@@ -207,6 +207,19 @@ router.put("/", (req, res) => {
         return res.status(400).json({ errorMessage: "Error updating file", error: err });
     }
     return res.status(200).json({ success: "File updated.", file:  req.body });
+});
+
+router.delete("/", async (req, res) => {
+    try {
+        const { fileNumber } = req.body;
+        const file = await Files.findOne({ where: { fileNumber: fileNumber } });
+        file.destroy();
+        const fileDates = await Dates.findAll({ where: { fileNumber: fileNumber }});
+        fileDates.forEach(date => date.destroy());
+        return res.status(200).json({ success: `File ${fileNumber} and all associated dates have been deleted.`})
+    } catch(err) {
+        return res.status(400).json(err);
+    }
 });
 
 module.exports = router;
