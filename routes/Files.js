@@ -20,6 +20,7 @@ router.get("/", async (req, res) => {
 
     const file = await Files.findOne({ where: { fileNumber: fileNumber } });
 
+    // Find all of the dates that belong to the specified fileNumber.
     const dates = await Dates.findAll({
         where: { fileNumber: fileNumber }
     })
@@ -27,6 +28,7 @@ router.get("/", async (req, res) => {
     file.dataValues.dates = [];
 
     if(dates) {
+        // Iterate through dates array, adding each record object to the file data sent in response.
         for(const object of dates) {
             file.dataValues.dates.push(object);
         }
@@ -72,7 +74,7 @@ router.post("/", async(req, res) => {
                 fileNumber: newFile.fileNumber,
                 type: "Escrow",
                 prefix: "First ",
-                isClosed: false
+                isClosed: newFile.isClosedDepositInitial
             });
         }
         if(newFile.depositSecond) {        
@@ -81,16 +83,16 @@ router.post("/", async(req, res) => {
                 fileNumber: newFile.fileNumber,
                 type: "Escrow",
                 prefix: "Second ",
-                isClosed: false
+                isClosed: newFile.isClosedDepositSecond
             });
         }
-        if(newFile.depositThird) {        
+        if(newFile.loanApproval) {        
             await Dates.create({
-                date: newFile.depositThird,
+                date: newFile.loanApproval,
                 fileNumber: newFile.fileNumber,
-                type: "Escrow",
-                prefix: "Third ",
-                isClosed: false
+                type: "Loan ✓",
+                prefix: '',
+                isClosed: newFile.isClosedLoanApproval
             });
         }
         if(newFile.inspection) {        
@@ -99,7 +101,7 @@ router.post("/", async(req, res) => {
                 fileNumber: newFile.fileNumber,
                 type: "Inspection",
                 prefix: '',
-                isClosed: false
+                isClosed: newFile.isClosedInspection
             });
         }
         if(newFile.closing) {        
@@ -108,7 +110,7 @@ router.post("/", async(req, res) => {
                 fileNumber: newFile.fileNumber,
                 type: "Closing",
                 prefix: '',
-                isClosed: false
+                isClosed: newFile.isClosedClosing
             });
         }
 
@@ -135,13 +137,13 @@ router.put("/", (req, res) => {
             const { effective, 
                 depositInitial, 
                 depositSecond, 
-                depositThird, 
+                loanApproval, 
                 inspection, 
                 closing, 
                 isClosedEffective, 
                 isClosedDepositInitial, 
                 isClosedDepositSecond, 
-                isClosedDepositThird, 
+                isClosedLoanApproval, 
                 isClosedInspection, 
                 isClosedClosing, 
             } = req.body;
@@ -150,7 +152,7 @@ router.put("/", (req, res) => {
                 effective: { date: effective, isClosed: isClosedEffective },
                 depositInitial: { date: depositInitial, isClosed: isClosedDepositInitial },
                 depositSecond: { date: depositSecond, isClosed: isClosedDepositSecond },
-                depositThird: { date: depositThird, isClosed: isClosedDepositThird },
+                'Loan ✓': { date: loanApproval, isClosed: isClosedLoanApproval },
                 inspection: { date: inspection, isClosed: isClosedInspection },
                 closing: { date: closing, isClosed: isClosedClosing },
             }
@@ -162,7 +164,7 @@ router.put("/", (req, res) => {
                 const existingDate = await Dates.findOne({
                     where: {
                         fileNumber: oldFileNumber,
-                        type: item.startsWith('deposit') ? 'Escrow' : item.charAt(0).toUpperCase() + item.slice(1),
+                        type: item.startsWith('deposit') ? 'Escrow' :  item.charAt(0).toUpperCase() + item.slice(1),
                         prefix: !item.startsWith('deposit') ? '' :
                             item.slice(7) === 'Initial' ? 'First ' : item.slice(7) + ' '
                     }

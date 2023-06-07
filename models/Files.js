@@ -9,6 +9,10 @@ module.exports = (sequelize, DataTypes) => {
             type: DataTypes.STRING,
             allowNull: false,
         },
+        isClosed: { // 0 = closed, 1 = open
+            type: DataTypes.TINYINT,
+            allowNull: false,
+        },
         address: { // ex.: "1234 N John Doe Street, Unit 123, Miami, FL 33155"
             type: DataTypes.STRING,
             allowNull: false,
@@ -25,50 +29,26 @@ module.exports = (sequelize, DataTypes) => {
             type: DataTypes.STRING,
             allowNull: false,
         },
-        effective: { // ex.: YYYY-MM-DD
-            type: DataTypes.DATEONLY,
-            allowNull: false,
-        },
-        depositInitial: { // ex.: YYYY-MM-DD
-            type: DataTypes.DATEONLY,
-            allowNull: true,
-        },
-        depositSecond: { // ex.: YYYY-MM-DD
-            type: DataTypes.DATEONLY,
-            allowNull: true,
-        },
-        depositThird: { // ex.: YYYY-MM-DD
-            type: DataTypes.DATEONLY,
-            allowNull: true,
-        },
-        inspection: { // ex.: YYYY-MM-DD
-            type: DataTypes.DATEONLY,
-            allowNull: true,
-        },        
-        closing: { // ex.: YYYY-MM-DD
-            type: DataTypes.DATEONLY,
-            allowNull: false,
-        },
-        notes: { // ex.: "PP: $1,000,000.00, 1st Deposit: $25,000,000.00, Escrow Agent: Joan Doe Title Group"
-            type: DataTypes.TEXT('long'),
-            allowNull: false,
-        },
-        isClosed: { // 0 = closed, 1 = open
-            type: DataTypes.TINYINT,
-            allowNull: false,
-        },
         isPurchase: {// ex.: 0=REFI, 1=purchase
             type: DataTypes.TINYINT,
             allowNull: false,
         },
-        representing: {// ex.: 0=buyer, 1=seller
+        whoRepresenting: {// ex.: 0=buyer, 1=seller
             type: DataTypes.TINYINT,
             allowNull: false,
         },
-        roles: { // ex.: {SellerDocs:1, BuyerDocs:0, ClosingAgent:0, EscrowAgent:1, TitleAgent:1}
+        notes: { // ex.: "..."
             type: DataTypes.TEXT('long'),
             allowNull: false,
-        }
+        },
+        roles: { // ex.: {SellerDocs:0, BuyerDocs:0, ClosingAgent:0, EscrowAgent:0, TitleAgent:0}
+            type: DataTypes.TEXT('long'),
+            allowNull: false,
+        },
+        milestones: { // ex.: {isEscrowReceived:0, isLienRequested:0, isTitleOrdered:0, ...}
+            type: DataTypes.TEXT('long'),
+            allowNull: false,
+        },
     })
 
     return Files;
