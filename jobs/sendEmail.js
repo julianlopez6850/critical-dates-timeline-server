@@ -3,6 +3,7 @@ const { workerData } = require("worker_threads");
 const nodeMailer = require("nodemailer");
 const { writeEmail } = require("../helpers/writeEmail");
 const { getTodaysDate } = require('../helpers/getTodaysDate');
+const { Users } = require('../models');
 
 async function sendEmail() {
     console.log('Attempting to send email...');
@@ -21,8 +22,9 @@ async function sendEmail() {
     const today = getTodaysDate();
     const MMDDYY = `${today.slice(-5)}-${today.slice(2,4)}`;
 
-    const recipients = process.env.RECIPIENTS.split(' ');
-    for(const recipient of recipients) {
+    const recipients = await Users.findAll({ attributes: ['email'] });
+    const recipientsArr = recipients.map(item => item.dataValues.email);
+    for(const recipient of recipientsArr) {
         //Email configuration
         await transporter.sendMail({
             from: process.env.FROM_EMAIL,
