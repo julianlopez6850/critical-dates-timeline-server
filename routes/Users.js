@@ -24,6 +24,15 @@ router.post("/login", async (req, res) => {
     });
 });
 
+// Logout
+router.post("/logout", async (req, res) => {
+	res.cookie("access-token", 'expired', {
+		maxAge: 1000,
+		httpOnly: true
+	})
+	return res.status(200).json({ success: "User logged out successfully." })
+});
+
 // Check if a user is logged in, and who that user is.
 router.get("/profile", validateToken, async (req, res) => {
     const user = await Users.findOne({ where: { username: req.username } });
