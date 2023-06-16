@@ -18,19 +18,27 @@ router.post("/login", async (req, res) => {
             return res.status(400).json({ error: "Wrong Username and Password Combination" });
 
         const accessToken = createToken(userFound);
-        res.cookie("access-token", accessToken, { maxAge: 1000 * 60 * 60 * 24 * 7 })
+        res.cookie("access-token", accessToken, {
+            maxAge: 1000 * 60 * 60 * 24 * 7,
+            httpOnly: true,
+            sameSite:'none',
+            secure: true
+        })
 
-        res.status(200).json({ success: "Login successful." });
+        res.status(200).json({ success: `User logged in as ${username.toUpperCase()}` });
     });
 });
 
 // Logout
 router.post("/logout", async (req, res) => {
-	res.cookie("access-token", 'expired', {
-		maxAge: 1000,
-		httpOnly: true
-	})
-	return res.status(200).json({ success: "User logged out successfully." })
+    res.cookie("access-token", 'expired', {
+        maxAge: 1000,
+        httpOnly: true,
+        sameSite: 'none',
+        secure: true
+    })
+
+    return res.status(200).json({ success: "User logged out successfully." })
 });
 
 // Check if a user is logged in, and who that user is.
