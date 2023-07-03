@@ -49,4 +49,27 @@ router.get("/profile", validateToken, async (req, res) => {
     res.status(200).json({ success: "User authenticated.", username: req.username, settings: user.settings })
 });
 
+// Update user settings.
+router.put('/settings', async (req, res) => {
+    const { username, settings } = req.body;
+
+    const user = await Users.findOne({ where: { username: username } });
+
+    if(!user) {
+        //ERROR. User not found
+        return;
+    }
+    
+    Users.update(
+        { settings: JSON.stringify(settings) },
+        { where: { username: username } }
+    ).then(() => {
+        console.log('SETTINGS UPDATED');
+        return res.status(200).json({ success: 'Settings updated.', username: username, settings: settings });
+    }).catch((err) => {
+        console.log(err)
+        return res.status(400).json({ errorMessage: 'Error updating settings.', error: err });
+    })
+});
+
 module.exports = router;
