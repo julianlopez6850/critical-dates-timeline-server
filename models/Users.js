@@ -13,7 +13,7 @@ module.exports = (sequelize, DataTypes) => {
             allowNull: false,
         },
         settings: { // ex.: "{ twoFactor: 1, notifications: 1, notificationRate: "daily", }"
-            type: DataTypes.STRING,
+            type: DataTypes.TEXT('long'),
             allowNull: false,
         },
     })
