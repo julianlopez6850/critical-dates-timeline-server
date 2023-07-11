@@ -3,26 +3,33 @@ const router = express.Router();
 const { Dates, Files } = require('../models');
 const sequelize = require('sequelize');
 const Op = sequelize.Op
+const customLog = require('../helpers/customLog');
 
 // Get all critical dates.
-router.get("/all", async (req, res) => {
-    const criticalDates = await Dates.findAll();
+router.get('/all', async (res) => {
+    customLog.endpointLog('Endpoint: GET /dates/all');
+
+    const criticalDates = await Dates.findAll({ attributes: { exclude: ['createdAt', 'updatedAt'] }, order: [['date', 'ASC']] });
 
     // Get file info for each date    
     for(var date of criticalDates) {
         const fileInfo = await Files.findOne({
             where: { fileNumber: date.fileNumber }
-        })
+        });
 
         for(const info in fileInfo.dataValues) {
-            date.dataValues[`${info}`] = fileInfo.dataValues[info]
+            if(info === 'isClosed')
+                date.dataValues['isFileClosed'] = fileInfo.dataValues[info];
+            else
+                date.dataValues[`${info}`] = fileInfo.dataValues[info];
         }
     }
 
-    res.json({ dates: criticalDates });
+    return res.status(200).json({ dates: criticalDates });
 });
 
-router.get("/", async (req, res) => {
+router.get('/', async (req, res) => {
+    customLog.endpointLog('Endpoint: GET /dates');
 
     try {
         const { startDate, endDate, type, isClosed} = req.query;
@@ -32,7 +39,7 @@ router.get("/", async (req, res) => {
         // if startDate and/or endDate is defined, search for Dates with a date field within the
         // range [startDate, endDate] (if one value is not defined, set it to its respective limit).
         if(startDate || endDate) {
-            datesQuery.date = { [Op.between]: [startDate || '1000-01-01', endDate || '9999-12-31'] }
+            datesQuery.date = { [Op.between]: [startDate || '1000-01-01', endDate || '9999-12-31'] };
         }
 
         if(type && type !== '') {
@@ -40,7 +47,7 @@ router.get("/", async (req, res) => {
         }
 
         if(isClosed && isClosed !== '') {
-            datesQuery.isClosed = isClosed === "true" ? 1 : 0;
+            datesQuery.isClosed = isClosed === 'true' ? 1 : 0;
         }
 
         // get the fileNumbers of all CLOSED files (i.e. isClosed === 1)
@@ -50,10 +57,12 @@ router.get("/", async (req, res) => {
 
         var closedFileNumbers = []
         for(const file of closedFiles) {
-            closedFileNumbers.push(file.dataValues.fileNumber)
+            closedFileNumbers.push(file.dataValues.fileNumber);
         }
 
         var criticalDates = []
+        
+        customLog.messageLog('Retrieving all Dates that match the given criteria...');
 
         if(isClosed === 'true') {
             // When isClosed query param = 'true', res includes Dates where all parameters are met OR 
@@ -62,7 +71,7 @@ router.get("/", async (req, res) => {
                 where: {
                     [Op.or]: [
                         datesQuery,
-                        { ...datesQuery, isClosed: 0, fileNumber: { [Op.in]: closedFileNumbers } }
+                        { ...datesQuery, fileNumber: { [Op.in]: closedFileNumbers } }
                     ]
                 },
                 order: [['date', 'ASC']]
@@ -89,50 +98,76 @@ router.get("/", async (req, res) => {
             criticalDates = await Dates.findAll({
                 where: datesQuery,
                 order: [['date', 'ASC']]
-            })
+            });
         }
+
+        if(criticalDates.length === 0) {
+            customLog.successLog('No Dates were found matching the given criteria.');
+            return res.status(200).json({ dates: criticalDates });
+        }
+
+        customLog.successLog('Finished retieving Dates that match the criteria.');
+        customLog.messageLog('Retrieving File info for each Date found above...');
         
         // for each date in the criticalDates array, get its respective file info and append it.
         for(var date of criticalDates) {
             const fileInfo = await Files.findOne({
                 where: { fileNumber: date.fileNumber }
-            })
+            });
 
             if(fileInfo) {
                 for(const info in fileInfo.dataValues) {
                     if(info === 'isClosed')
-                        date.dataValues['isFileClosed'] = fileInfo.dataValues[info]
+                        date.dataValues['isFileClosed'] = fileInfo.dataValues[info];
                     else
-                        date.dataValues[`${info}`] = fileInfo.dataValues[info]
+                        date.dataValues[`${info}`] = fileInfo.dataValues[info];
                 }
             }
         }
 
+        customLog.successLog('Finished retrieving all necessary info for each Date.');
         return res.status(200).json({ dates: criticalDates });
     } catch(err) {
-        console.log(err);
-        return res.status(400).json(err);
+        customLog.errorLog('ERROR: An error occurred while trying to retrieve the Dates and their respective File information.');
+        customLog.errorLog(err);
+        return res.status(500).json({ message: 'The server has experienced an unexpected error.', error: err });
     }
 });
 
-router.put("/", async (req, res) => {
+router.put('/', async (req, res) => {
+    customLog.endpointLog('Endpoint: PUT /dates');
+
     const { fileNumber, type, prefix, date, isClosed } = req.body;
 
-    var updatedValues = {}
+    customLog.messageLog(`Updating Date ${fileNumber} ${prefix}${type}...`);
+
+    var updatedValues = {};
 
     if(date) {
         updatedValues.date = date;
     }
     if(isClosed) {
-        updatedValues.isClosed = isClosed
+        updatedValues.isClosed = isClosed;
     }
 
-    Dates.update({ date: date, isClosed: isClosed },
+    const oldDateInfo = await Dates.findOne({ where: { fileNumber: fileNumber, type: type, prefix: prefix }});
+
+    Dates.update(
+        { date: date, isClosed: isClosed },
         { where: { fileNumber: fileNumber, type: type, prefix: prefix }}
     ).then(() => {
-        return res.status(200).json({ success: "Successfully updated date." })
+        customLog.successLog(`Successfully updated ${fileNumber} ${prefix}${type} date. Updated date info:`);
+        customLog.infoLog({
+            fileNumber: fileNumber,
+            type: `${prefix}${type}`,
+            date: date ? date : oldDateInfo.date,
+            isClosed: isClosed ? isClosed : oldDateInfo.isClosed
+        });
+        return res.status(200).json({ success: 'Successfully updated date.' });
     }).catch((err) => {
-        return res.status(400).json({ error: err })
+        customLog.errorLog('ERROR: An error occurred while trying to update the Date.');
+        customLog.errorLog(err);
+        return res.status(500).json({ message: 'The server has experienced an unexpected error.', error: err });
     })
 })
 

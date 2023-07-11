@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { Files, Dates } = require('../models');
 const Sequelize = require('sequelize');
+const customLog = require('../helpers/customLog');
 
 const sequelize = new Sequelize('critical-dates-schedule', 'root', 'password', {
     host: 'localhost',
@@ -9,50 +10,73 @@ const sequelize = new Sequelize('critical-dates-schedule', 'root', 'password', {
   });
 
 // Get all files.
-router.get("/all", async (req, res) => {
+router.get('/all', async (req, res) => {
+    customLog.endpointLog('Endpoint: GET /files/all');
+
+    customLog.messageLog('Retrieving info for all files...');
     const files = await Files.findAll();
-    res.json(files);
+
+    customLog.successLog('Successfully sent info for all files.');
+    return res.status(200).json({ files: files });
 });
 
 // Get single file by fileNumber.
-router.get("/", async (req, res) => {
-    const { fileNumber } = req.query;
+router.get('/', async (req, res) => {
+    customLog.endpointLog('Endpoint: GET /files');
 
-    const file = await Files.findOne({ where: { fileNumber: fileNumber } });
+    try {
+        const { fileNumber } = req.query;
 
-    // Find all of the dates that belong to the specified fileNumber.
-    const dates = await Dates.findAll({
-        where: { fileNumber: fileNumber }
-    })
+        customLog.messageLog(`Retrieving info for file ${fileNumber}...`);
+        
+        const file = await Files.findOne({ where: { fileNumber: fileNumber } });
 
-    file.dataValues.dates = [];
+        // Find all of the dates that belong to the specified fileNumber.
+        const dates = await Dates.findAll({
+            where: { fileNumber: fileNumber }
+        })
 
-    if(dates) {
-        // Iterate through dates array, adding each record object to the file data sent in response.
-        for(const object of dates) {
-            file.dataValues.dates.push(object);
+        file.dataValues.dates = [];
+
+        if(dates) {
+            // Iterate through dates array, adding each record object to the file data sent in response.
+            for(const object of dates) {
+                file.dataValues.dates.push(object);
+            }
         }
+
+        customLog.successLog(`Successfully sent info for file ${fileNumber}.`);
+        return res.status(200).json({ file: file });
+    } catch(err) {
+        customLog.errorLog('ERROR: An error occurred while trying to retrieve the File.');
+        customLog.errorLog(err);
+        return res.status(500).json({ message: 'The server has experienced an unexpected error.', error: err });
     }
-    
-    res.json(file);
 });
 
 
 // Post new File
-router.post("/", async (req, res) => {
-    try {
-        const newFile = req.body;
+router.post('/', async (req, res) => {
+    customLog.endpointLog('Endpoint: POST /files');
 
+    const newFile = req.body;
+
+    if(!newFile.fileNumber) {
+        customLog.errorLog('ERROR: Missing required fileNumber parameter. Aborting request.');
+        return res.status(400).json({ error: 'Missing required fileNumber parameter.' });
+    }
+
+    customLog.messageLog(`Posting new file, #${newFile.fileNumber}...`);
+
+    try {
         const existingFile = await Files.findOne({ where: {fileNumber: newFile.fileNumber }});
-        
-        console.log(existingFile)
+
         if(existingFile) {
-            return res.status(400).json({ message: "This file already exists.", file: existingFile});
+            customLog.errorLog('ERROR: A file already exists with that file number.');
+            return res.status(400).json({ message: 'This file already exists.', file: existingFile});
         }
 
         newFile.isClosed = false;
-
-        console.log(newFile);
 
         await sequelize.query('ALTER TABLE `critical-dates-schedule`.files AUTO_INCREMENT = 1;')
         await sequelize.query('ALTER TABLE `critical-dates-schedule`.dates AUTO_INCREMENT = 1;')
@@ -63,7 +87,7 @@ router.post("/", async (req, res) => {
             await Dates.create({
                 date: newFile.effective,
                 fileNumber: newFile.fileNumber,
-                type: "Effective",
+                type: 'Effective',
                 prefix: '',
                 isClosed: true
             });
@@ -72,8 +96,8 @@ router.post("/", async (req, res) => {
             await Dates.create({
                 date: newFile.depositInitial,
                 fileNumber: newFile.fileNumber,
-                type: "Escrow",
-                prefix: "First ",
+                type: 'Escrow',
+                prefix: 'First ',
                 isClosed: newFile.isClosedDepositInitial
             });
         }
@@ -81,8 +105,8 @@ router.post("/", async (req, res) => {
             await Dates.create({
                 date: newFile.depositSecond,
                 fileNumber: newFile.fileNumber,
-                type: "Escrow",
-                prefix: "Second ",
+                type: 'Escrow',
+                prefix: 'Second ',
                 isClosed: newFile.isClosedDepositSecond
             });
         }
@@ -90,7 +114,7 @@ router.post("/", async (req, res) => {
             await Dates.create({
                 date: newFile.loanApproval,
                 fileNumber: newFile.fileNumber,
-                type: "Loan ✓",
+                type: 'Loan ✓',
                 prefix: '',
                 isClosed: newFile.isClosedLoanApproval
             });
@@ -99,7 +123,7 @@ router.post("/", async (req, res) => {
             await Dates.create({
                 date: newFile.inspection,
                 fileNumber: newFile.fileNumber,
-                type: "Inspection",
+                type: 'Inspection',
                 prefix: '',
                 isClosed: newFile.isClosedInspection
             });
@@ -108,33 +132,48 @@ router.post("/", async (req, res) => {
             await Dates.create({
                 date: newFile.closing,
                 fileNumber: newFile.fileNumber,
-                type: "Closing",
+                type: 'Closing',
                 prefix: '',
                 isClosed: newFile.isClosedClosing
             });
         }
 
-        return res.status(200).json({ message: "Successfully added new file, and associated critical dates.", file: newFile });
-    } catch (err) {
-        console.log(err);
-        return res.status(400).json({ error: err });
-    }
+        customLog.successLog(`Successfully posted file ${newFile.fileNumber}:`);
+        customLog.infoLog(newFile);
 
+        return res.status(200).json({ message: 'Successfully added new file and associated critical dates.', file: newFile });
+    } catch (err) {
+        customLog.errorLog('ERROR: An error occurred while trying to post the new File.');
+        customLog.errorLog(err);
+        return res.status(500).json({ message: 'The server has experienced an unexpected error.', error: err });
+    }
 });
 
 // Update a file
-router.put("/", (req, res) => {
+router.put('/', (req, res) => {
+    customLog.endpointLog('Endpoint: PUT /files');
+
     const { oldFileNumber } = req.body;
+    delete req.body.oldFileNumber;
+    const updatedFile = req.body;
+
+    if(!oldFileNumber) {
+        customLog.errorLog('ERROR: Missing required oldFileNumber parameter. Aborting request.');
+        return res.status(400).json({ error: 'Missing required oldFileNumber parameter.' });
+    }
+
+    customLog.messageLog(`Updating file ${oldFileNumber}...`);
 
     try {
         // update fields of File record.
         Files.update(
-            req.body,
+            updatedFile,
             { where: { fileNumber: oldFileNumber } }
         )
         .then( async () => {
             // then update the fields of each date record associated with that file
-            const { effective, 
+            const { 
+                effective, 
                 depositInitial, 
                 depositSecond, 
                 loanApproval, 
@@ -146,7 +185,7 @@ router.put("/", (req, res) => {
                 isClosedLoanApproval, 
                 isClosedInspection, 
                 isClosedClosing, 
-            } = req.body;
+            } = updatedFile;
 
             const dates = {
                 effective: { date: effective, isClosed: isClosedEffective },
@@ -173,7 +212,7 @@ router.put("/", (req, res) => {
                 if(existingDate) {
                     await Dates.update(
                         {
-                            fileNumber: req.body.fileNumber,
+                            fileNumber: updatedFile.fileNumber,
                             date: dates[item].date,
                             isClosed: dates[item].isClosed
                         },
@@ -190,7 +229,7 @@ router.put("/", (req, res) => {
                 } else {
                     await Dates.create({
                         date: dates[item].date,
-                        fileNumber: req.body.fileNumber,
+                        fileNumber: updatedFile.fileNumber,
                         type: item.startsWith('deposit') ? 'Escrow' : item.charAt(0).toUpperCase() + item.slice(1),
                         prefix: !item.startsWith('deposit') ? '' :
                             item.slice(7) === 'Initial' ? 'First ' : item.slice(7) + ' ',
@@ -198,27 +237,48 @@ router.put("/", (req, res) => {
                     });
                 }
             }
-        }).catch((err) => {
-            console.log(err)
+            
+            customLog.successLog(`Successfully updated file ${oldFileNumber}. Updated file info:`);
+            customLog.infoLog(updatedFile);
+            
+            return res.status(200).json({ success: 'File updated.', file: updatedFile });
         })
-
-        delete req.body.oldFileNumber;
-    } catch {
-        return res.status(400).json({ errorMessage: "Error updating file", error: err });
+    } catch(err) {
+        customLog.errorLog('ERROR: An error occurred while trying to update the File.');
+        customLog.errorLog(err);
+        return res.status(500).json({ message: 'The server has experienced an unexpected error.', error: err });
     }
-    return res.status(200).json({ success: "File updated.", file:  req.body });
 });
 
-router.delete("/", async (req, res) => {
+router.delete('/', async (req, res) => {
+    customLog.endpointLog('Endpoint: DELETE /files');
+
+    const { fileNumber } = req.body;
+
+    if(!fileNumber) {
+        customLog.errorLog('ERROR: Missing required fileNumber parameter; Aborting request.')
+        return res.status(400).json({ error: 'Missing required fileNumber parameter.' });
+    }
+    
+    customLog.messageLog(`Deleting file ${fileNumber}...`);
+
     try {
-        const { fileNumber } = req.body;
+
+        // Find and delete File {fileNumber}.
         const file = await Files.findOne({ where: { fileNumber: fileNumber } });
         file.destroy();
+
+        // Find and delete File's Dates.
         const fileDates = await Dates.findAll({ where: { fileNumber: fileNumber }});
         fileDates.forEach(date => date.destroy());
+    
+        customLog.successLog(`Successfully deleted file ${fileNumber}...`);
+
         return res.status(200).json({ success: `File ${fileNumber} and all associated dates have been deleted.`})
     } catch(err) {
-        return res.status(400).json(err);
+        customLog.errorLog('ERROR: An error occurred while trying to delete the File.');
+        customLog.errorLog(err);
+        return res.status(500).json({ message: 'The server has experienced an unexpected error.', error: err });
     }
 });
 

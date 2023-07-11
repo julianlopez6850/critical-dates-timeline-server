@@ -4,6 +4,7 @@ const cors = require("cors");
 const Bree = require('bree')
 const cookieParser = require("cookie-parser");
 const { validateToken } = require('./jsonWebTokens')
+const customLog = require('./helpers/customLog');
 
 app.use(express.json());
 app.use(cors({
@@ -45,7 +46,7 @@ bree.start();
 
 db.sequelize.sync().then(() => {
     app.listen(5000, () => {
-        console.log("Server running on port 5000");
+        customLog.runLog('Server running on port 5000');
     })
 })
 
