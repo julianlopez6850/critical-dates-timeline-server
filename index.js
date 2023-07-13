@@ -26,14 +26,11 @@ app.use("/dates", validateToken, datesRouter);
 const authRouter = require("./routes/Users");
 app.use("/auth", authRouter);
 
-const develomentCron = '* * * * *';    // occurs every minute.
-const productionCron = '0 8 * * 1-5';   // occurs every weekday at 8:00 A.M.
-
 // Email Scheduler
 const bree = new Bree({
     jobs: [{
         name: 'sendEmail',
-        cron: productionCron,
+        cron: '*/15 * * * *',  // occurs every 15 minutes
         worker: {
             workerData: {
                 description: 'Job Started: Send Daily Critical Dates Email'
