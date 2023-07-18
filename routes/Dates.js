@@ -5,99 +5,88 @@ const sequelize = require('sequelize');
 const Op = sequelize.Op
 const customLog = require('../helpers/customLog');
 
-// Get all critical dates.
-router.get('/all', async (res) => {
-    customLog.endpointLog('Endpoint: GET /dates/all');
-
-    const criticalDates = await Dates.findAll({ attributes: { exclude: ['createdAt', 'updatedAt'] }, order: [['date', 'ASC']] });
-
-    // Get file info for each date    
-    for(var date of criticalDates) {
-        const fileInfo = await Files.findOne({
-            where: { fileNumber: date.fileNumber }
-        });
-
-        for(const info in fileInfo.dataValues) {
-            if(info === 'isClosed')
-                date.dataValues['isFileClosed'] = fileInfo.dataValues[info];
-            else
-                date.dataValues[`${info}`] = fileInfo.dataValues[info];
-        }
-    }
-
-    return res.status(200).json({ dates: criticalDates });
-});
-
+// Get Dates that match the user-defined attributes passed in query parameters:
+// WHERE date: BETWEEN {startDate} (optional, defaults to '01-01-0001') AND {endDate} (optional, defaults to '12-31-9999')
+// AND type: {type} (optional, defaults to all)
+// AND isClosed: {isClosed} (optional, defaults to all)
+// ORDER BY {sort} (optional, defaults to order['date', 'ASC'])
+// (If NO query parameters are passed, ALL Dates in database are returned).
 router.get('/', async (req, res) => {
     customLog.endpointLog('Endpoint: GET /dates');
 
     try {
-        const { startDate, endDate, type, isClosed} = req.query;
+        const { startDate, endDate, type, isClosed, sort} = req.query;
 
-        var datesQuery = {}
+        var queryWhere = {}
 
-        // if startDate and/or endDate is defined, search for Dates with a date field within the
+        // If startDate and/or endDate is defined, search for Dates with a date field within the
         // range [startDate, endDate] (if one value is not defined, set it to its respective limit).
-        if(startDate || endDate) {
-            datesQuery.date = { [Op.between]: [startDate || '1000-01-01', endDate || '9999-12-31'] };
-        }
+        if(startDate || endDate)
+            queryWhere.date = { [Op.between]: [startDate || '0001-01-01', endDate || '9999-12-31'] };
 
-        if(type && type !== '') {
-            datesQuery.type = type;
-        }
-
-        if(isClosed && isClosed !== '') {
-            datesQuery.isClosed = isClosed === 'true' ? 1 : 0;
-        }
-
-        // get the fileNumbers of all CLOSED files (i.e. isClosed === 1)
-        const closedFiles = await Files.findAll({
-            where: { isClosed: 1 }
-        });
-
-        var closedFileNumbers = []
-        for(const file of closedFiles) {
-            closedFileNumbers.push(file.dataValues.fileNumber);
-        }
-
-        var criticalDates = []
+        if(type && type !== '')
+            queryWhere.type = type;
         
-        customLog.messageLog('Retrieving all Dates that match the given criteria...');
+        customLog.messageLog('Retrieving all Dates that match the given criteria, along with each Date\'s File info...');
 
+        // Include info of the File that each Date belongs to.
+        const queryInclude =  [{
+            model: Files,
+            attributes: ['buyer', 'seller', 'address', 'isClosed']
+        }];
+
+        // Order the resulting data according to the defined sort column and direction
+        // (if sort is not defined, order is defaulted to Ascending by 'Date'.'date').
+        var sortTable = 'Dates';
+        var sortBy = 'Date';
+        var sortDir = 'ASC';
+
+        if(sort) {
+            splitSort = sort.split(',')
+            sortBy = splitSort[0];
+            if(!(sortBy === 'Date'))
+                sortTable = 'Files';
+            sortDir = splitSort[1];
+        }
+
+        const queryOrder = [
+            sortTable === 'Dates' ?
+            [ sortBy, sortDir ] :
+            [ Files, sortBy, sortDir ]
+        ];
+
+        var criticalDates = [];
         if(isClosed === 'true') {
-            // When isClosed query param = 'true', res includes Dates where all parameters are met OR 
-            // where the date's associated file is CLOSED (i.e. 'Files'.'isClosed' = 1).
-            criticalDates = await Dates.findAll({
-                where: {
-                    [Op.or]: [
-                        datesQuery,
-                        { ...datesQuery, fileNumber: { [Op.in]: closedFileNumbers } }
-                    ]
-                },
-                order: [['date', 'ASC']]
-            });
-        } else if(isClosed === 'false') {
-            // When isClosed === 'false', res includes Dates where all parameters are met AND 
-            // where the date's associated file is NOT CLOSED (i.e. 'Files'.'isClosed' = 0).
+            // When isClosed = 'true', res includes Dates WHERE
+            // 'Dates'.'isClosed': 1 OR 'File'.'isClosed': 1 AND all other parameters are met.
             criticalDates = await Dates.findAll({
                 where: {
                     [Op.and]: [
-                        datesQuery,
-                        {
-                            fileNumber: {
-                                [Op.notIn]: closedFileNumbers
-                            }
-                        }
+                        queryWhere,
+                        {[Op.or]: [
+                            { isClosed: 1 },
+                            { '$File.isClosed$': 1 }
+                        ]}
                     ]
                 },
-                order: [['date', 'ASC']]
+                include: queryInclude,
+                order: queryOrder
+            });
+        } else if(isClosed === 'false') {
+            // When isClosed = 'false', res includes Dates WHERE
+            // 'Dates'.'isClosed': 0 AND 'File'.'isClosed': 0 AND all other parameters are met.
+            criticalDates = await Dates.findAll({
+                where: { ...queryWhere, isClosed: 0, '$File.isClosed$': 0 },
+                include: queryInclude,
+                order: queryOrder
             });
         } else {
-            // if isClosed is not defined, or it is not 'true'/'false', 
-            // res only includes Dates where all other parameters are met.
+            // If isClosed is not defined (or defined as something other than 'true'/'false'), res includes Dates WHERE
+            // all other parameters are met, regardless of isClosed property.
             criticalDates = await Dates.findAll({
-                where: datesQuery,
-                order: [['date', 'ASC']]
+                where: queryWhere,
+                include: queryInclude,
+                order: queryOrder
             });
         }
 
@@ -107,26 +96,7 @@ router.get('/', async (req, res) => {
         }
 
         customLog.successLog('Finished retieving Dates that match the criteria.');
-        customLog.messageLog('Retrieving File info for each Date found above...');
-        
-        // for each date in the criticalDates array, get its respective file info and append it.
-        for(var date of criticalDates) {
-            const fileInfo = await Files.findOne({
-                where: { fileNumber: date.fileNumber }
-            });
-
-            if(fileInfo) {
-                for(const info in fileInfo.dataValues) {
-                    if(info === 'isClosed')
-                        date.dataValues['isFileClosed'] = fileInfo.dataValues[info];
-                    else
-                        date.dataValues[`${info}`] = fileInfo.dataValues[info];
-                }
-            }
-        }
-
-        customLog.successLog('Finished retrieving all necessary info for each Date.');
-        return res.status(200).json({ dates: criticalDates });
+        return res.status(200).json({ dates: criticalDates, length: criticalDates.length });
     } catch(err) {
         customLog.errorLog('ERROR: An error occurred while trying to retrieve the Dates and their respective File information.');
         customLog.errorLog(err);
@@ -134,6 +104,7 @@ router.get('/', async (req, res) => {
     }
 });
 
+// Update a Date.
 router.put('/', async (req, res) => {
     customLog.endpointLog('Endpoint: PUT /dates');
 
@@ -142,26 +113,23 @@ router.put('/', async (req, res) => {
     customLog.messageLog(`Updating Date ${fileNumber} ${prefix}${type}...`);
 
     var updatedValues = {};
-
-    if(date) {
+    if(date)
         updatedValues.date = date;
-    }
-    if(isClosed) {
+    if(isClosed)
         updatedValues.isClosed = isClosed;
-    }
 
-    const oldDateInfo = await Dates.findOne({ where: { fileNumber: fileNumber, type: type, prefix: prefix }});
+    const oldDate = await Dates.findOne({ where: { fileNumber: fileNumber, type: type, prefix: prefix } });
 
-    Dates.update(
-        { date: date, isClosed: isClosed },
-        { where: { fileNumber: fileNumber, type: type, prefix: prefix }}
+    // Update the Date record.
+    oldDate.update(
+        { date: date, isClosed: isClosed }
     ).then(() => {
         customLog.successLog(`Successfully updated ${fileNumber} ${prefix}${type} date. Updated date info:`);
         customLog.infoLog({
             fileNumber: fileNumber,
             type: `${prefix}${type}`,
-            date: date ? date : oldDateInfo.date,
-            isClosed: isClosed ? isClosed : oldDateInfo.isClosed
+            date: date ? date : oldDate.date,
+            isClosed: isClosed ? isClosed : oldDate.isClosed
         });
         return res.status(200).json({ success: 'Successfully updated date.' });
     }).catch((err) => {

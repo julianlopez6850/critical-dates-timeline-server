@@ -22,8 +22,16 @@ module.exports = (sequelize, DataTypes) => {
         isClosed: { // 0 = closed, 1 = open
             type: DataTypes.TINYINT,
             allowNull: false,
-        }
-    })
+        },
+    }, { timestamps: false });
+
+    // Each Date belongs to one File.
+    Dates.associate = (models) => {
+        Dates.belongsTo(models.Files, {
+            foreignKey: 'fileNumber',
+            onDelete: 'cascade',
+        });
+    };
 
     return Dates;
 }

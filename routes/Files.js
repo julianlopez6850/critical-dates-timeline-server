@@ -9,18 +9,19 @@ const sequelize = new Sequelize('critical-dates-schedule', 'root', 'password', {
     dialect: 'mysql',
   });
 
-// Get all files.
+// Get all Files.
+// Only return attributes: ['fileNumber', 'fileRef', 'buyer', 'seller', 'address', 'isClosed'] for each File.
 router.get('/all', async (req, res) => {
     customLog.endpointLog('Endpoint: GET /files/all');
 
     customLog.messageLog('Retrieving info for all files...');
-    const files = await Files.findAll();
+    const files = await Files.findAll({ attributes: ['fileNumber', 'fileRef', 'buyer', 'seller', 'address', 'isClosed'] });
 
     customLog.successLog('Successfully sent info for all files.');
     return res.status(200).json({ files: files });
 });
 
-// Get single file by fileNumber.
+// Get a single File by fileNumber (required).
 router.get('/', async (req, res) => {
     customLog.endpointLog('Endpoint: GET /files');
 
@@ -29,21 +30,11 @@ router.get('/', async (req, res) => {
 
         customLog.messageLog(`Retrieving info for file ${fileNumber}...`);
         
-        const file = await Files.findOne({ where: { fileNumber: fileNumber } });
-
-        // Find all of the dates that belong to the specified fileNumber.
-        const dates = await Dates.findAll({
-            where: { fileNumber: fileNumber }
-        })
-
-        file.dataValues.dates = [];
-
-        if(dates) {
-            // Iterate through dates array, adding each record object to the file data sent in response.
-            for(const object of dates) {
-                file.dataValues.dates.push(object);
-            }
-        }
+        // Find the File, include its associated Dates.
+        const file = await Files.findOne({
+            where: { fileNumber: fileNumber },
+            include: [{ model: Dates }]
+        });
 
         customLog.successLog(`Successfully sent info for file ${fileNumber}.`);
         return res.status(200).json({ file: file });
@@ -55,34 +46,34 @@ router.get('/', async (req, res) => {
 });
 
 
-// Post new File
+// Post a new File.
 router.post('/', async (req, res) => {
     customLog.endpointLog('Endpoint: POST /files');
 
     const newFile = req.body;
 
+    // If {fileNumber} is not provided in the request body, return and alert the user/client.
     if(!newFile.fileNumber) {
         customLog.errorLog('ERROR: Missing required fileNumber parameter. Aborting request.');
         return res.status(400).json({ error: 'Missing required fileNumber parameter.' });
-    }
+    };
 
     customLog.messageLog(`Posting new file, #${newFile.fileNumber}...`);
 
     try {
         const existingFile = await Files.findOne({ where: {fileNumber: newFile.fileNumber }});
 
+        // If the {fileNumber} provided is already in use, return and alert the user/client.
         if(existingFile) {
             customLog.errorLog('ERROR: A file already exists with that file number.');
             return res.status(400).json({ message: 'This file already exists.', file: existingFile});
         }
 
+        // Create the new file.
         newFile.isClosed = false;
-
-        await sequelize.query('ALTER TABLE `critical-dates-schedule`.files AUTO_INCREMENT = 1;')
-        await sequelize.query('ALTER TABLE `critical-dates-schedule`.dates AUTO_INCREMENT = 1;')
-
         await Files.create(newFile);
 
+        // Create each new Date associated with the new File.
         if(newFile.effective) {        
             await Dates.create({
                 date: newFile.effective,
@@ -140,7 +131,6 @@ router.post('/', async (req, res) => {
 
         customLog.successLog(`Successfully posted file ${newFile.fileNumber}:`);
         customLog.infoLog(newFile);
-
         return res.status(200).json({ message: 'Successfully added new file and associated critical dates.', file: newFile });
     } catch (err) {
         customLog.errorLog('ERROR: An error occurred while trying to post the new File.');
@@ -149,14 +139,15 @@ router.post('/', async (req, res) => {
     }
 });
 
-// Update a file
-router.put('/', (req, res) => {
+// Update a File.
+router.put('/', async (req, res) => {
     customLog.endpointLog('Endpoint: PUT /files');
 
     const { oldFileNumber } = req.body;
     delete req.body.oldFileNumber;
     const updatedFile = req.body;
 
+    // If {oldFileNumber} is not provided in the request body, return and alert the user/client.
     if(!oldFileNumber) {
         customLog.errorLog('ERROR: Missing required oldFileNumber parameter. Aborting request.');
         return res.status(400).json({ error: 'Missing required oldFileNumber parameter.' });
@@ -164,14 +155,14 @@ router.put('/', (req, res) => {
 
     customLog.messageLog(`Updating file ${oldFileNumber}...`);
 
+    const file = await Dates.findOne({ where: { fileNumber: oldFileNumber } });
+
     try {
-        // update fields of File record.
-        Files.update(
-            updatedFile,
-            { where: { fileNumber: oldFileNumber } }
-        )
-        .then( async () => {
-            // then update the fields of each date record associated with that file
+        // Update the File record.
+        file.update(
+            updatedFile
+        ).then( async () => {
+            // Then update each Date record that belongs to that File
             const { 
                 effective, 
                 depositInitial, 
@@ -194,7 +185,7 @@ router.put('/', (req, res) => {
                 'Loan ✓': { date: loanApproval, isClosed: isClosedLoanApproval },
                 inspection: { date: inspection, isClosed: isClosedInspection },
                 closing: { date: closing, isClosed: isClosedClosing },
-            }
+            };
 
             for(const item in dates) {
                 if(!dates[item].date)
@@ -207,7 +198,7 @@ router.put('/', (req, res) => {
                         prefix: !item.startsWith('deposit') ? '' :
                             item.slice(7) === 'Initial' ? 'First ' : item.slice(7) + ' '
                     }
-                })
+                });
 
                 if(existingDate) {
                     await Dates.update(
@@ -225,7 +216,7 @@ router.put('/', (req, res) => {
 
                             }
                         }
-                    )
+                    );
                 } else {
                     await Dates.create({
                         date: dates[item].date,
@@ -240,7 +231,6 @@ router.put('/', (req, res) => {
             
             customLog.successLog(`Successfully updated file ${oldFileNumber}. Updated file info:`);
             customLog.infoLog(updatedFile);
-            
             return res.status(200).json({ success: 'File updated.', file: updatedFile });
         })
     } catch(err) {
@@ -250,31 +240,27 @@ router.put('/', (req, res) => {
     }
 });
 
+// Delete a File.
 router.delete('/', async (req, res) => {
     customLog.endpointLog('Endpoint: DELETE /files');
 
     const { fileNumber } = req.body;
 
+    // If {fileNumber} is not provided in the request body, return and alert the user/client.
     if(!fileNumber) {
-        customLog.errorLog('ERROR: Missing required fileNumber parameter; Aborting request.')
+        customLog.errorLog('ERROR: Missing required fileNumber parameter; Aborting request.');
         return res.status(400).json({ error: 'Missing required fileNumber parameter.' });
     }
     
     customLog.messageLog(`Deleting file ${fileNumber}...`);
 
     try {
-
         // Find and delete File {fileNumber}.
         const file = await Files.findOne({ where: { fileNumber: fileNumber } });
         file.destroy();
-
-        // Find and delete File's Dates.
-        const fileDates = await Dates.findAll({ where: { fileNumber: fileNumber }});
-        fileDates.forEach(date => date.destroy());
     
         customLog.successLog(`Successfully deleted file ${fileNumber}...`);
-
-        return res.status(200).json({ success: `File ${fileNumber} and all associated dates have been deleted.`})
+        return res.status(200).json({ success: `File ${fileNumber} and all associated dates have been deleted.`});
     } catch(err) {
         customLog.errorLog('ERROR: An error occurred while trying to delete the File.');
         customLog.errorLog(err);

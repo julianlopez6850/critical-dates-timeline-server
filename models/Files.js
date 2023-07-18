@@ -49,7 +49,15 @@ module.exports = (sequelize, DataTypes) => {
             type: DataTypes.TEXT('long'),
             allowNull: false,
         },
-    })
+    }, { timestamps: false });
+
+    // Each File can have many Dates.
+    Files.associate = (models) => {
+        Files.hasMany(models.Dates, {
+            foreignKey: 'fileNumber',
+            onDelete: 'cascade',
+        });
+    };
 
     return Files;
 }
