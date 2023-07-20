@@ -155,13 +155,13 @@ router.put('/', async (req, res) => {
 
     customLog.messageLog(`Updating file ${oldFileNumber}...`);
 
-    const file = await Dates.findOne({ where: { fileNumber: oldFileNumber } });
-
     try {
         // Update the File record.
-        file.update(
-            updatedFile
+        Files.update(
+            updatedFile,
+            {where: { fileNumber: oldFileNumber}}
         ).then( async () => {
+            customLog.messageLog(`Updating file ${oldFileNumber} critical dates...`);
             // Then update each Date record that belongs to that File
             const { 
                 effective, 
@@ -178,55 +178,64 @@ router.put('/', async (req, res) => {
                 isClosedClosing, 
             } = updatedFile;
 
-            const dates = {
-                effective: { date: effective, isClosed: isClosedEffective },
-                depositInitial: { date: depositInitial, isClosed: isClosedDepositInitial },
-                depositSecond: { date: depositSecond, isClosed: isClosedDepositSecond },
-                'Loan ✓': { date: loanApproval, isClosed: isClosedLoanApproval },
-                inspection: { date: inspection, isClosed: isClosedInspection },
-                closing: { date: closing, isClosed: isClosedClosing },
-            };
+            const dates = [
+                { type: 'Effective', date: effective, isClosed: isClosedEffective, prefix: '' },
+                { type: 'Escrow', date: depositInitial, isClosed: isClosedDepositInitial, prefix: 'First ' },
+                { type: 'Escrow', date: depositSecond, isClosed: isClosedDepositSecond, prefix: 'Second ' },
+                { type: 'Loan ✓', date: loanApproval, isClosed: isClosedLoanApproval, prefix: '' },
+                { type: 'Inspection', date: inspection, isClosed: isClosedInspection, prefix: '' },
+                { type: 'Closing', date: closing, isClosed: isClosedClosing, prefix: '' },
+            ];
 
-            for(const item in dates) {
-                if(!dates[item].date)
-                    continue;
-
-                const existingDate = await Dates.findOne({
-                    where: {
-                        fileNumber: oldFileNumber,
-                        type: item.startsWith('deposit') ? 'Escrow' :  item.charAt(0).toUpperCase() + item.slice(1),
-                        prefix: !item.startsWith('deposit') ? '' :
-                            item.slice(7) === 'Initial' ? 'First ' : item.slice(7) + ' '
-                    }
-                });
-
-                if(existingDate) {
-                    await Dates.update(
-                        {
+            for(const date of dates) {
+                customLog.messageLog(`Checking ${updatedFile.fileNumber} ${date.prefix}${date.type} date...`);
+                customLog.infoLog(`Passed Date info: { date: ${date.date}, isClosed: ${date.isClosed} }.`);
+                if(!date.date) {
+                    await Dates.findOne({
+                        where: {
                             fileNumber: updatedFile.fileNumber,
-                            date: dates[item].date,
-                            isClosed: dates[item].isClosed
-                        },
-                        {
-                            where: {
-                                fileNumber: oldFileNumber,
-                                type: item.startsWith('deposit') ? 'Escrow' : item.charAt(0).toUpperCase() + item.slice(1),
-                                prefix: !item.startsWith('deposit') ? '' :
-                                    item.slice(7) === 'Initial' ? 'First ' : (item.slice(7) + ' ')
-
-                            }
+                            type: date.type,
+                            prefix: date.prefix
                         }
-                    );
-                } else {
-                    await Dates.create({
-                        date: dates[item].date,
-                        fileNumber: updatedFile.fileNumber,
-                        type: item.startsWith('deposit') ? 'Escrow' : item.charAt(0).toUpperCase() + item.slice(1),
-                        prefix: !item.startsWith('deposit') ? '' :
-                            item.slice(7) === 'Initial' ? 'First ' : item.slice(7) + ' ',
-                        isClosed: dates[item].isClosed
+                    }).then( async (existingDate) => {
+                        if(existingDate === null) return customLog.successLog(`${updatedFile.fileNumber} ${date.prefix}${date.type} DATE: NOTHING TO DO (No existing date, no date entered). Continuing...`);
+                        await existingDate.destroy().then(() => {
+                            customLog.successLog(`${updatedFile.fileNumber} ${date.prefix}${date.type} DATE: DELETED. Continuing...`);
+                        });
                     });
+                    continue;
                 }
+
+                await Dates.findOne({
+                    where: {
+                        fileNumber: updatedFile.fileNumber,
+                        type: date.type,
+                        prefix: date.prefix
+                    }
+                }).then( async (existingDate) => {
+                    if(existingDate === null) {
+                        await Dates.create({
+                            date: date.date,
+                            fileNumber: updatedFile.fileNumber,
+                            type: date.type,
+                            prefix: date.prefix,
+                            isClosed: date.isClosed
+                        }).then(() => {
+                            customLog.successLog(`${updatedFile.fileNumber} ${date.prefix}${date.type} DATE: CREATED. Continuing...`);
+                        });
+                        return;
+                    }
+                    if(existingDate.date === date.date && existingDate.isClosed === date.isClosed) {
+                        customLog.successLog(`${updatedFile.fileNumber} ${date.prefix}${date.type} DATE: NOTHING TO DO (No changes made to existing date). Continuing...`);
+                        return;
+                    }
+                    await existingDate.update({
+                        date: date.date,
+                        isClosed: date.isClosed
+                    }).then(() => {
+                        customLog.successLog(`${updatedFile.fileNumber} ${date.prefix}${date.type} DATE: UPDATED. Continuing...`);
+                    });                    
+                })
             }
             
             customLog.successLog(`Successfully updated file ${oldFileNumber}. Updated file info:`);
