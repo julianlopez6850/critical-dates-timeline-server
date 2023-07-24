@@ -1,15 +1,18 @@
 const express = require('express');
 const app = express();
 const cors = require("cors");
-const Bree = require('bree')
+const Bree = require('bree');
 const cookieParser = require("cookie-parser");
-const { validateToken } = require('./jsonWebTokens')
+const { validateToken } = require('./jsonWebTokens');
 const customLog = require('./helpers/customLog');
 
 app.use(express.json());
+
+const originURLs = process.env.NODE_ENV === 'production' ? (process.env.PRODUCTION_URLS ? process.env.PRODUCTION_URLS.split(' ') : []) : 
+process.env.DEVELOPMENT_URLS ? process.env.DEVELOPMENT_URLS.split(' ') : [];
 app.use(cors({
     credentials: true,
-    origin: ["http://localhost:3000", "http://localhost:3001", "http://localhost:3002"]
+    origin: originURLs
 }));
 app.use(cookieParser());
 
@@ -42,8 +45,9 @@ const bree = new Bree({
 bree.start();
 
 db.sequelize.sync().then(() => {
-    app.listen(5000, () => {
+    app.listen(process.env.PORT || 5000, () => {
         customLog.runLog('Server running on port 5000');
+        customLog.runLog(`Server will process requests from the following origins: ${JSON.stringify(originURLs)}`);
     })
-})
+});
 

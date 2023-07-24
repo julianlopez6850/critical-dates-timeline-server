@@ -6,7 +6,7 @@ const { getTodaysDate } = require('./getTodaysDate')
 const writeEmail = async (recipient) => {
     var emailHtml = `<b style='white-space: pre-line'>Good morning ${recipient.slice(0,1).toUpperCase() + (recipient.split('@'))[0].slice(1)}!<br/><br/>` +
         `Below is your daily critical timeline update:<br/><br/>` +
-        `<a href=${process.env.URL}>You can also view it on the web at ${process.env.URL}!</a> <--- { Not available yet }<br/><br/>`
+        `<a href=${process.env.URL}>You can also view it on the web at ${process.env.URL}!</a><br/><br/>`
     
     const closedFiles = await Files.findAll({
         where: { isClosed: 1 }

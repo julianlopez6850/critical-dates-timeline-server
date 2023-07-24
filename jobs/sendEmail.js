@@ -14,8 +14,8 @@ async function sendEmail() {
         port: 587,
         secure: false,
         auth: {
-            user: process.env.FROM_EMAIL,
-            pass: process.env.PASSWORD
+            user: process.env.NODEMAILER_EMAIL,
+            pass: process.env.NODEMAILER_EMAIL_PASSWORD
         }
     });
     
@@ -83,7 +83,7 @@ async function sendEmail() {
     for(const recipient of filteredRecipients) {
         //Email configuration
         await transporter.sendMail({
-            from: process.env.FROM_EMAIL,
+            from: process.env.NODEMAILER_EMAIL,
             to: recipient,
             subject: `${MMDDYY} Critical Times Update`,
             html: await writeEmail(recipient),
