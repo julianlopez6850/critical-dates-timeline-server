@@ -124,7 +124,7 @@ router.put('/settings', validateToken, async (req, res) => {
     
     // Update the User's settings.
     Users.update(
-        { settings: settings },
+        { settings: JSON.stringify(settings) },
         { where: { username: username } }
     ).then(() => {
         customLog.successLog('Successfully updated settings.');
