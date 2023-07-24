@@ -20,7 +20,15 @@ async function sendEmail() {
     });
     
     const dayNames=['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-    const date = new Date();
+    // get Date object (if ENV is production, convert to EST timezone).
+    const date = process.env.NODE_ENV === 'production' ?
+        new Date(
+            new Date().toLocaleString('en-US', {
+                timeZone: 'America/New_York'
+            })
+        ) :
+        new Date();
+    // get day and time from Date object
     const day = dayNames[date.getDay()];
     const time = `${leadingZero(date.getHours())}:${leadingZero(date.getMinutes())}`;
 
