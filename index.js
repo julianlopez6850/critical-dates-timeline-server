@@ -5,6 +5,7 @@ const Bree = require('bree');
 const cookieParser = require("cookie-parser");
 const { validateToken } = require('./jsonWebTokens');
 const customLog = require('./helpers/customLog');
+const { requestInfoLogger, endpointLogger } = require('./helpers/infoLoggers');
 
 app.use(express.json());
 
@@ -21,13 +22,13 @@ const db = require('./models');
 // Routers
 // Validate the user at every /files/* and /dates/* endpoint
 const filesRouter = require("./routes/Files");
-app.use("/files", validateToken, filesRouter);
+app.use("/files", requestInfoLogger, validateToken, endpointLogger, filesRouter);
 
 const datesRouter = require("./routes/Dates");
-app.use("/dates", validateToken, datesRouter);
+app.use("/dates", requestInfoLogger, validateToken, endpointLogger, datesRouter);
 
 const authRouter = require("./routes/Users");
-app.use("/auth", authRouter);
+app.use("/auth", requestInfoLogger, authRouter);
 
 // Email Scheduler
 const bree = new Bree({

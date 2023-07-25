@@ -32,7 +32,7 @@ async function sendEmail() {
     const day = dayNames[date.getDay()];
     const time = `${leadingZero(date.getHours())}:${leadingZero(date.getMinutes())}`;
 
-    customLog.endpointLog(`${day.toUpperCase()} @ ${time}: SENDING OUT NOTIFICATION EMAILS`);
+    customLog.endpointLog(`${day.toUpperCase()} @ ${time}: SENDING OUT NOTIFICATION EMAILS`, true);
 
     const recipients = await Users.findAll({ attributes: ['username', 'email', 'settings'] });
     const recipientsArr = await recipients.map(item => {

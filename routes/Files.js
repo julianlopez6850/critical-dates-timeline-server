@@ -4,16 +4,9 @@ const { Files, Dates } = require('../models');
 const Sequelize = require('sequelize');
 const customLog = require('../helpers/customLog');
 
-const sequelize = new Sequelize('critical-dates-schedule', 'root', 'password', {
-    host: 'localhost',
-    dialect: 'mysql',
-  });
-
 // Get all Files.
 // Only return attributes: ['fileNumber', 'fileRef', 'buyer', 'seller', 'address', 'isClosed'] for each File.
 router.get('/all', async (req, res) => {
-    customLog.endpointLog('Endpoint: GET /files/all');
-
     customLog.messageLog('Retrieving info for all files...');
     const files = await Files.findAll({ attributes: ['fileNumber', 'fileRef', 'buyer', 'seller', 'address', 'isClosed'] });
 
@@ -23,8 +16,6 @@ router.get('/all', async (req, res) => {
 
 // Get a single File by fileNumber (required).
 router.get('/', async (req, res) => {
-    customLog.endpointLog('Endpoint: GET /files');
-
     try {
         const { fileNumber } = req.query;
 
@@ -48,8 +39,6 @@ router.get('/', async (req, res) => {
 
 // Post a new File.
 router.post('/', async (req, res) => {
-    customLog.endpointLog('Endpoint: POST /files');
-
     const newFile = req.body;
 
     // If {fileNumber} is not provided in the request body, return and alert the user/client.
@@ -141,8 +130,6 @@ router.post('/', async (req, res) => {
 
 // Update a File.
 router.put('/', async (req, res) => {
-    customLog.endpointLog('Endpoint: PUT /files');
-
     const { oldFileNumber } = req.body;
     delete req.body.oldFileNumber;
     const updatedFile = req.body;
@@ -251,8 +238,6 @@ router.put('/', async (req, res) => {
 
 // Delete a File.
 router.delete('/', async (req, res) => {
-    customLog.endpointLog('Endpoint: DELETE /files');
-
     const { fileNumber } = req.body;
 
     // If {fileNumber} is not provided in the request body, return and alert the user/client.

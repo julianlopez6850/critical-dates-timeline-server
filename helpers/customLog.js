@@ -1,4 +1,5 @@
-const endpointLog = (message) => {
+const endpointLog = (message, isNewLine) => {
+    isNewLine && console.log();
     return console.log('\x1b[41m%s\x1b[0m', message);   // red highlight
 }
 

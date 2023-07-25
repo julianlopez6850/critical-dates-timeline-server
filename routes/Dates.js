@@ -12,8 +12,6 @@ const customLog = require('../helpers/customLog');
 // ORDER BY {sort} (optional, defaults to order['date', 'ASC'])
 // (If NO query parameters are passed, ALL Dates in database are returned).
 router.get('/', async (req, res) => {
-    customLog.endpointLog('Endpoint: GET /dates');
-
     try {
         const { startDate, endDate, type, isClosed, sort} = req.query;
 
@@ -106,8 +104,6 @@ router.get('/', async (req, res) => {
 
 // Update a Date.
 router.put('/', async (req, res) => {
-    customLog.endpointLog('Endpoint: PUT /dates');
-
     const { fileNumber, type, prefix, date, isClosed } = req.body;
 
     customLog.messageLog(`Updating Date ${fileNumber} ${prefix}${type}...`);

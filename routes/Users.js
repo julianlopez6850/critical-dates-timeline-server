@@ -4,14 +4,11 @@ const { Users } = require('../models');
 const bcrypt = require('bcrypt');
 const { createToken, validateToken } = require('../jsonWebTokens');
 const customLog = require('../helpers/customLog');
-const { requestInfoLogger } = require('../helpers/requestInfoLogger');
+const { endpointLogger } = require('../helpers/infoLoggers');
 const { verify } = require('jsonwebtoken');
 
 // Login
-router.post('/login', async (req, res) => {
-    customLog.endpointLog('Endpoint: POST /auth/login');
-    requestInfoLogger(req);
-
+router.post('/login', endpointLogger, async (req, res) => {
     const { username, password } = req.body;
 
     // If {username} and/or {password} is not provided in the request body, return and alert the user/client.
@@ -51,10 +48,7 @@ router.post('/login', async (req, res) => {
 });
 
 // Logout
-router.post('/logout', async (req, res) => {
-    customLog.endpointLog('Endpoint: POST /auth/logout');
-    requestInfoLogger(req);
-
+router.post('/logout', endpointLogger, async (req, res) => {
     // Log out the user (expire their accessToken cookie).
     res.cookie('access-token', 'expired', {
         maxAge: 1000,
@@ -72,9 +66,7 @@ router.post('/logout', async (req, res) => {
 });
 
 // Check if a user is logged in, and who that user is.
-router.get('/profile', validateToken, async (req, res) => {
-    customLog.endpointLog('Endpoint: GET /auth/profile');
-
+router.get('/profile', validateToken, endpointLogger, async (req, res) => {
     const user = await Users.findOne({ where: { username: req.username } });
     user.settings = JSON.parse(user.settings);
 
@@ -83,7 +75,7 @@ router.get('/profile', validateToken, async (req, res) => {
 });
 
 // Update user settings.
-router.put('/settings', validateToken, async (req, res) => {
+router.put('/settings', validateToken, endpointLogger, async (req, res) => {
     const { username, settings } = req.body;
 
     // If {username} is not provided in the request body, return and alert the user/client.

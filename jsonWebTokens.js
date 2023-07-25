@@ -1,8 +1,6 @@
 require('dotenv/config');
 const { Users } = require('./models');
 const customLog = require('./helpers/customLog');
-const { requestInfoLogger } = require('./helpers/requestInfoLogger');
-
 const { sign, verify, decode } = require('jsonwebtoken');
 
 const createToken = (user) => {
@@ -19,8 +17,6 @@ const validateToken = async (req, res, next) => {
     customLog.validationLog('VALIDATING USER ACCESS TOKEN');
     const accessToken = req.cookies["access-token"];
 
-    requestInfoLogger(req);
-
     if(!accessToken) {
         customLog.errorLog('ERROR: User not logged in; Aborting request.');
         return res.status(401).json({ error: "User not logged in." });
@@ -36,7 +32,7 @@ const validateToken = async (req, res, next) => {
             const decodedToken = decode(accessToken);
             req.username = decodedToken.username;
 
-            customLog.successLog('User Verified.\n');
+            customLog.successLog(`User Verified: {${decodedToken.username}}`);
             return next();
         }
 
