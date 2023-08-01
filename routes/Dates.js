@@ -93,7 +93,7 @@ router.get('/', async (req, res) => {
             return res.status(200).json({ dates: criticalDates });
         }
 
-        customLog.successLog('Finished retieving Dates that match the criteria.');
+        customLog.successLog('Finished retrieving Dates that match the criteria.');
         return res.status(200).json({ dates: criticalDates, length: criticalDates.length });
     } catch(err) {
         customLog.errorLog('ERROR: An error occurred while trying to retrieve the Dates and their respective File information.');
