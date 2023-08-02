@@ -27,6 +27,11 @@ router.get('/', async (req, res) => {
             include: [{ model: Dates }]
         });
 
+        // For each Date associated with the File, parse its calculatedDate value from a string into a JSON object.
+        for(const date of file.Dates) {
+            date.dataValues.calculatedDate = JSON.parse(date.dataValues.calculatedDate);
+        }
+
         customLog.successLog(`Successfully sent info for file ${fileNumber}.`);
         return res.status(200).json({ file: file });
     } catch(err) {
@@ -62,6 +67,8 @@ router.post('/', async (req, res) => {
         newFile.isClosed = false;
         await Files.create(newFile);
 
+        const defaultCalculatedDate = JSON.stringify({isCalculated: false, numDays: 3, direction: 1, from:'Effective', otherDate:''});
+
         // Create each new Date associated with the new File.
         if(newFile.effective) {        
             await Dates.create({
@@ -69,7 +76,8 @@ router.post('/', async (req, res) => {
                 fileNumber: newFile.fileNumber,
                 type: 'Effective',
                 prefix: '',
-                isClosed: true
+                isClosed: true,
+                calculatedDate: null
             });
         }
         if(newFile.depositInitial) {        
@@ -78,7 +86,10 @@ router.post('/', async (req, res) => {
                 fileNumber: newFile.fileNumber,
                 type: 'Escrow',
                 prefix: 'First ',
-                isClosed: newFile.isClosedDepositInitial
+                isClosed: newFile.isClosedDepositInitial,
+                calculatedDate: Object.keys(newFile.isCalculatedDepositInitial).length > 0 ?
+                    JSON.stringify(newFile.isCalculatedDepositInitial) :
+                    defaultCalculatedDate
             });
         }
         if(newFile.depositSecond) {        
@@ -87,7 +98,10 @@ router.post('/', async (req, res) => {
                 fileNumber: newFile.fileNumber,
                 type: 'Escrow',
                 prefix: 'Second ',
-                isClosed: newFile.isClosedDepositSecond
+                isClosed: newFile.isClosedDepositSecond,
+                calculatedDate: Object.keys(newFile.isCalculatedDepositSecond).length > 0 ?
+                    JSON.stringify(newFile.isCalculatedDepositSecond) :
+                    defaultCalculatedDate
             });
         }
         if(newFile.loanApproval) {        
@@ -96,7 +110,10 @@ router.post('/', async (req, res) => {
                 fileNumber: newFile.fileNumber,
                 type: 'Loan ✓',
                 prefix: '',
-                isClosed: newFile.isClosedLoanApproval
+                isClosed: newFile.isClosedLoanApproval,
+                calculatedDate: Object.keys(newFile.isCalculatedLoanApproval).length > 0 ?
+                    JSON.stringify(newFile.isCalculatedLoanApproval) :
+                    defaultCalculatedDate
             });
         }
         if(newFile.inspection) {        
@@ -105,7 +122,10 @@ router.post('/', async (req, res) => {
                 fileNumber: newFile.fileNumber,
                 type: 'Inspection',
                 prefix: '',
-                isClosed: newFile.isClosedInspection
+                isClosed: newFile.isClosedInspection,
+                calculatedDate: Object.keys(newFile.isCalculatedInspection).length > 0 ?
+                    JSON.stringify(newFile.isCalculatedInspection) :
+                    defaultCalculatedDate
             });
         }
         if(newFile.closing) {        
@@ -114,7 +134,10 @@ router.post('/', async (req, res) => {
                 fileNumber: newFile.fileNumber,
                 type: 'Closing',
                 prefix: '',
-                isClosed: newFile.isClosedClosing
+                isClosed: newFile.isClosedClosing,
+                calculatedDate: Object.keys(newFile.isCalculatedClosing).length > 0 ?
+                    JSON.stringify(newFile.isCalculatedClosing) :
+                    defaultCalculatedDate
             });
         }
 
@@ -150,33 +173,76 @@ router.put('/', async (req, res) => {
         ).then( async () => {
             customLog.messageLog(`Updating file ${oldFileNumber} critical dates...`);
             // Then update each Date record that belongs to that File
-            const { 
-                effective, 
-                depositInitial, 
-                depositSecond, 
-                loanApproval, 
-                inspection, 
-                closing, 
-                isClosedEffective, 
-                isClosedDepositInitial, 
-                isClosedDepositSecond, 
-                isClosedLoanApproval, 
-                isClosedInspection, 
-                isClosedClosing, 
+            const {
+                effective,
+                depositInitial,
+                depositSecond,
+                loanApproval,
+                inspection,
+                closing,
+                isClosedEffective,
+                isClosedDepositInitial,
+                isClosedDepositSecond,
+                isClosedLoanApproval,
+                isClosedInspection,
+                isClosedClosing,
+                isCalculatedDepositInitial,
+                isCalculatedDepositSecond,
+                isCalculatedLoanApproval,
+                isCalculatedInspection,
+                isCalculatedClosing
             } = updatedFile;
 
+            const defaultCalculatedDate = JSON.stringify({isCalculated: false, numDays: 3, direction: 1, from:'Effective', otherDate:''});
+
             const dates = [
-                { type: 'Effective', date: effective, isClosed: isClosedEffective, prefix: '' },
-                { type: 'Escrow', date: depositInitial, isClosed: isClosedDepositInitial, prefix: 'First ' },
-                { type: 'Escrow', date: depositSecond, isClosed: isClosedDepositSecond, prefix: 'Second ' },
-                { type: 'Loan ✓', date: loanApproval, isClosed: isClosedLoanApproval, prefix: '' },
-                { type: 'Inspection', date: inspection, isClosed: isClosedInspection, prefix: '' },
-                { type: 'Closing', date: closing, isClosed: isClosedClosing, prefix: '' },
+                {
+                    type: 'Effective',
+                    date: effective,
+                    isClosed: isClosedEffective,
+                    prefix: '',
+                    calculatedDate: null
+                },
+                {
+                    type: 'Escrow',
+                    date: depositInitial,
+                    isClosed: isClosedDepositInitial,
+                    prefix: 'First ',
+                    calculatedDate: JSON.stringify(isCalculatedDepositInitial) || defaultCalculatedDate
+                },
+                {
+                    type: 'Escrow',
+                    date: depositSecond,
+                    isClosed: isClosedDepositSecond,
+                    prefix: 'Second ',
+                    calculatedDate: JSON.stringify(isCalculatedDepositSecond) || defaultCalculatedDate
+                },
+                {
+                    type: 'Loan ✓',
+                    date: loanApproval,
+                    isClosed: isClosedLoanApproval,
+                    prefix: '',
+                    calculatedDate: JSON.stringify(isCalculatedLoanApproval) || defaultCalculatedDate
+                },
+                {
+                    type: 'Inspection',
+                    date: inspection,
+                    isClosed: isClosedInspection,
+                    prefix: '',
+                    calculatedDate: JSON.stringify(isCalculatedInspection) || defaultCalculatedDate
+                },
+                {
+                    type: 'Closing',
+                    date: closing,
+                    isClosed: isClosedClosing,
+                    prefix: '',
+                    calculatedDate: JSON.stringify(isCalculatedClosing) || defaultCalculatedDate
+                },
             ];
 
             for(const date of dates) {
                 customLog.messageLog(`Checking ${updatedFile.fileNumber} ${date.prefix}${date.type} date...`);
-                customLog.infoLog(`Passed Date info: { date: ${date.date}, isClosed: ${date.isClosed} }.`);
+                customLog.infoLog(`Passed Date info: { date: ${date.date}, isClosed: ${date.isClosed}, calculatedDate: ${date.calculatedDate} }.`);
                 if(!date.date) {
                     await Dates.findOne({
                         where: {
@@ -203,25 +269,27 @@ router.put('/', async (req, res) => {
                     if(existingDate === null) {
                         await Dates.create({
                             date: date.date,
+                            calculatedDate: date.calculatedDate,
                             fileNumber: updatedFile.fileNumber,
                             type: date.type,
                             prefix: date.prefix,
-                            isClosed: date.isClosed
+                            isClosed: date.isClosed,
                         }).then(() => {
                             customLog.successLog(`${updatedFile.fileNumber} ${date.prefix}${date.type} DATE: CREATED. Continuing...`);
                         });
                         return;
                     }
-                    if(existingDate.date === date.date && existingDate.isClosed === date.isClosed) {
+                    if(existingDate.date === date.date && existingDate.isClosed === date.isClosed && existingDate.calculatedDate === date.calculatedDate) {
                         customLog.successLog(`${updatedFile.fileNumber} ${date.prefix}${date.type} DATE: NOTHING TO DO (No changes made to existing date). Continuing...`);
                         return;
                     }
                     await existingDate.update({
                         date: date.date,
-                        isClosed: date.isClosed
+                        isClosed: date.isClosed,
+                        calculatedDate: date.calculatedDate
                     }).then(() => {
                         customLog.successLog(`${updatedFile.fileNumber} ${date.prefix}${date.type} DATE: UPDATED. Continuing...`);
-                    });                    
+                    });
                 })
             }
             

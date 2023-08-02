@@ -4,12 +4,12 @@ module.exports = (sequelize, DataTypes) => {
             type: DataTypes.DATEONLY,
             allowNull: false,
         },
-        type: { // ex.: "Closing", "Escrow", "Inspection"
+        type: { // ex.: 'Effective', 'Escrow', 'Inspection', 'Closing', etc.
             type: DataTypes.STRING,
             allowNull: false,
             primaryKey: true,
         },
-        prefix: { // ex.: "First", "Second"...
+        prefix: { // ex.: 'First' or 'Second'
             type: DataTypes.STRING,
             allowNull: true,
             primaryKey: true,
@@ -19,9 +19,13 @@ module.exports = (sequelize, DataTypes) => {
             allowNull: false,
             primaryKey: true,
         },
-        isClosed: { // 0 = closed, 1 = open
+        isClosed: { // 0 = Closed, 1 = Open
             type: DataTypes.TINYINT,
             allowNull: false,
+        },
+        calculatedDate: { // ex.: '{ isCalculated: 1, numDays: 3, direction: 1, from: 'Other', otherDate: 'YYYY-MM-DD' }'
+            type: DataTypes.TEXT('long'),
+            allowNull: true,
         },
     }, { timestamps: false });
 

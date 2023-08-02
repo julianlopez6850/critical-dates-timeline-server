@@ -1,18 +1,18 @@
 module.exports = (sequelize, DataTypes) => {
     const Users = sequelize.define("Users", {
-        username: { // ex.: "john"
+        username: { // ex.: 'john'
             type: DataTypes.STRING,
             allowNull: false,
         },
-        email: { // ex.: "john@email.com"
+        password: { // ex.: 'password123' (encrypted)
             type: DataTypes.STRING,
             allowNull: false,
         },
-        password: { // ex.: "password123"
+        email: { // ex.: 'john@email.com'
             type: DataTypes.STRING,
             allowNull: false,
         },
-        settings: { // ex.: "{ twoFactor: 1, notifications: 1, notificationRate: "daily", }"
+        settings: { // ex.: '{ darkTheme: true, notifications: { Mon: { active: true, time: '08:00' }, Tue: ... }, ... }'
             type: DataTypes.TEXT('long'),
             allowNull: false,
         },
