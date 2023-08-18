@@ -33,8 +33,8 @@ module.exports = (sequelize, DataTypes) => {
             type: DataTypes.TINYINT,
             allowNull: false,
         },
-        whoRepresenting: {// 0 = Buyer, 1 = Seller
-            type: DataTypes.TINYINT,
+        whoRepresenting: {// 'Buyer', 'Seller', or 'Both'
+            type: DataTypes.STRING,
             allowNull: false,
         },
         notes: { // ex.: '...'

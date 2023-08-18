@@ -52,17 +52,17 @@ router.post('/', async (req, res) => {
         return res.status(400).json({ error: 'Missing required fileNumber parameter.' });
     };
 
+    const existingFile = await Files.findOne({ where: {fileNumber: newFile.fileNumber }});
+
+    // If the {fileNumber} provided is already in use, return and alert the user/client.
+    if(existingFile) {
+        customLog.errorLog('ERROR: A file already exists with that file number.');
+        return res.status(400).json({ message: 'This file already exists.', file: existingFile});
+    }
+
     customLog.messageLog(`Posting new file, #${newFile.fileNumber}...`);
 
     try {
-        const existingFile = await Files.findOne({ where: {fileNumber: newFile.fileNumber }});
-
-        // If the {fileNumber} provided is already in use, return and alert the user/client.
-        if(existingFile) {
-            customLog.errorLog('ERROR: A file already exists with that file number.');
-            return res.status(400).json({ message: 'This file already exists.', file: existingFile});
-        }
-
         // Create the new file.
         newFile.isClosed = false;
         await Files.create(newFile);
