@@ -30,7 +30,7 @@ router.get('/', async (req, res) => {
         // Include info of the File that each Date belongs to.
         const queryInclude =  [{
             model: Files,
-            attributes: ['buyer', 'seller', 'address', 'isClosed']
+            attributes: ['buyer', 'seller', 'address', 'whoRepresenting', 'isPurchase', 'isClosed']
         }];
 
         // Order the resulting data according to the defined sort column and direction
