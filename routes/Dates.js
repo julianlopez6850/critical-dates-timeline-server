@@ -13,7 +13,7 @@ const customLog = require('../helpers/customLog');
 // (If NO query parameters are passed, ALL Dates in database are returned).
 router.get('/', async (req, res) => {
     try {
-        const { startDate, endDate, type, isClosed, sort} = req.query;
+        const { startDate, endDate, type, isClosed, sort, dealType} = req.query;
 
         var queryWhere = {}
 
@@ -28,10 +28,19 @@ router.get('/', async (req, res) => {
         customLog.messageLog('Retrieving all Dates that match the given criteria, along with each Date\'s File info...');
 
         // Include info of the File that each Date belongs to.
-        const queryInclude =  [{
+        const queryInclude =  {
             model: Files,
             attributes: ['buyer', 'seller', 'address', 'whoRepresenting', 'isPurchase', 'isClosed']
-        }];
+        };
+
+        if(dealType && dealType !== '') {
+            queryInclude.where = (dealType === 'Refinance' ?
+                { isPurchase: false } :
+                dealType === 'Sale' ?
+                    { isPurchase: true, [Op.not]: {whoRepresenting: 'Buyer' } } :
+                    { isPurchase: true, [Op.not]: {whoRepresenting: 'Seller' } }
+            )
+        }
 
         // Order the resulting data according to the defined sort column and direction
         // (if sort is not defined, order is defaulted to Ascending by 'Date'.'date').
