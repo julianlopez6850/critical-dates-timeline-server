@@ -13,7 +13,11 @@ const customLog = require('../helpers/customLog');
 // (If NO query parameters are passed, ALL Dates in database are returned).
 router.get('/', async (req, res) => {
     try {
-        const { startDate, endDate, type, isClosed, sort, dealType} = req.query;
+        const { startDate, endDate, type, isClosed, sort, dealType, limit = 10000, pageNum = 1} = req.query;
+
+        if(limit && pageNum) {
+            offset = parseInt(limit) * (Math.max(parseInt(pageNum), 1) - 1);
+        }
 
         var queryWhere = {}
 
@@ -63,10 +67,11 @@ router.get('/', async (req, res) => {
         ];
 
         var criticalDates = [];
+        var count = 0;
         if(isClosed === 'true') {
             // When isClosed = 'true', res includes Dates WHERE
             // 'Dates'.'isClosed': 1 OR 'File'.'isClosed': 1 AND all other parameters are met.
-            criticalDates = await Dates.findAll({
+            criticalDates = await Dates.findAndCountAll({
                 where: {
                     [Op.and]: [
                         queryWhere,
@@ -77,33 +82,40 @@ router.get('/', async (req, res) => {
                     ]
                 },
                 include: queryInclude,
-                order: queryOrder
+                order: queryOrder,
+                offset: offset,
+                limit: parseInt(limit),
             });
         } else if(isClosed === 'false') {
             // When isClosed = 'false', res includes Dates WHERE
             // 'Dates'.'isClosed': 0 AND 'File'.'isClosed': 0 AND all other parameters are met.
-            criticalDates = await Dates.findAll({
+            criticalDates = await Dates.findAndCountAll({
                 where: { ...queryWhere, isClosed: 0, '$File.isClosed$': 0 },
                 include: queryInclude,
-                order: queryOrder
+                order: queryOrder,
+                offset: offset,
+                limit: parseInt(limit),
             });
         } else {
             // If isClosed is not defined (or defined as something other than 'true'/'false'), res includes Dates WHERE
             // all other parameters are met, regardless of isClosed property.
-            criticalDates = await Dates.findAll({
+            criticalDates = await Dates.findAndCountAll({
                 where: queryWhere,
                 include: queryInclude,
-                order: queryOrder
+                order: queryOrder,
+                offset: offset,
+                limit: parseInt(limit),
             });
         }
 
-        if(criticalDates.length === 0) {
+        const numReturned = criticalDates.rows.length;
+        if(numReturned === 0) {
             customLog.successLog('No Dates were found matching the given criteria.');
-            return res.status(200).json({ dates: criticalDates });
+            return res.status(200).json({ dates: criticalDates.rows, pageLength: numReturned, total: criticalDates.count });
         }
 
         customLog.successLog('Finished retrieving Dates that match the criteria.');
-        return res.status(200).json({ dates: criticalDates, length: criticalDates.length });
+        return res.status(200).json({ dates: criticalDates.rows, pageLength: numReturned, start: offset + 1, end: offset + numReturned, total: criticalDates.count });
     } catch(err) {
         customLog.errorLog('ERROR: An error occurred while trying to retrieve the Dates and their respective File information.');
         customLog.errorLog(err);
