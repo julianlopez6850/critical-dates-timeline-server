@@ -5,10 +5,10 @@ const Sequelize = require('sequelize');
 const customLog = require('../helpers/customLog');
 
 // Get all Files.
-// Only return attributes: ['fileNumber', 'fileRef', 'buyer', 'seller', 'address', 'isClosed'] for each File.
+// Only return attributes: ['fileNumber', 'fileRef', 'buyer', 'seller', 'address', 'status'] for each File.
 router.get('/all', async (req, res) => {
     customLog.messageLog('Retrieving info for all files...');
-    const files = await Files.findAll({ attributes: ['fileNumber', 'fileRef', 'buyer', 'seller', 'address', 'isClosed'] });
+    const files = await Files.findAll({ attributes: ['fileNumber', 'fileRef', 'buyer', 'seller', 'address', 'status'] });
 
     customLog.successLog('Successfully sent info for all files.');
     return res.status(200).json({ files: files });
@@ -64,13 +64,13 @@ router.post('/', async (req, res) => {
 
     try {
         // Create the new file.
-        newFile.isClosed = false;
+        newFile.status = 'Open';
         await Files.create(newFile);
 
         const defaultCalculatedDate = JSON.stringify({isCalculated: false, numDays: 3, direction: 1, from:'Effective', otherDate:''});
 
         // Create each new Date associated with the new File.
-        if(newFile.effective) {        
+        if(newFile.effective) {
             await Dates.create({
                 date: newFile.effective,
                 fileNumber: newFile.fileNumber,
@@ -80,7 +80,7 @@ router.post('/', async (req, res) => {
                 calculatedDate: null
             });
         }
-        if(newFile.depositInitial) {        
+        if(newFile.depositInitial) {
             await Dates.create({
                 date: newFile.depositInitial,
                 fileNumber: newFile.fileNumber,
@@ -92,7 +92,7 @@ router.post('/', async (req, res) => {
                     defaultCalculatedDate
             });
         }
-        if(newFile.depositSecond) {        
+        if(newFile.depositSecond) {
             await Dates.create({
                 date: newFile.depositSecond,
                 fileNumber: newFile.fileNumber,
@@ -104,7 +104,7 @@ router.post('/', async (req, res) => {
                     defaultCalculatedDate
             });
         }
-        if(newFile.loanApproval) {        
+        if(newFile.loanApproval) {
             await Dates.create({
                 date: newFile.loanApproval,
                 fileNumber: newFile.fileNumber,
@@ -116,7 +116,7 @@ router.post('/', async (req, res) => {
                     defaultCalculatedDate
             });
         }
-        if(newFile.inspection) {        
+        if(newFile.inspection) {
             await Dates.create({
                 date: newFile.inspection,
                 fileNumber: newFile.fileNumber,
@@ -128,7 +128,7 @@ router.post('/', async (req, res) => {
                     defaultCalculatedDate
             });
         }
-        if(newFile.closing) {        
+        if(newFile.closing) {
             await Dates.create({
                 date: newFile.closing,
                 fileNumber: newFile.fileNumber,

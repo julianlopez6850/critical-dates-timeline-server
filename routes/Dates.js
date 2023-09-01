@@ -34,7 +34,7 @@ router.get('/', async (req, res) => {
         // Include info of the File that each Date belongs to.
         const queryInclude =  {
             model: Files,
-            attributes: ['buyer', 'seller', 'address', 'whoRepresenting', 'isPurchase', 'isClosed']
+            attributes: ['buyer', 'seller', 'address', 'whoRepresenting', 'isPurchase', 'status']
         };
 
         if(dealType && dealType !== '') {
@@ -67,7 +67,6 @@ router.get('/', async (req, res) => {
         ];
 
         var criticalDates = [];
-        var count = 0;
         if(isClosed === 'true') {
             // When isClosed = 'true', res includes Dates WHERE
             // 'Dates'.'isClosed': 1 OR 'File'.'isClosed': 1 AND all other parameters are met.
@@ -77,7 +76,7 @@ router.get('/', async (req, res) => {
                         queryWhere,
                         {[Op.or]: [
                             { isClosed: 1 },
-                            { '$File.isClosed$': 1 }
+                            {[Op.not]: [{ '$File.status$': 'Open' }]}
                         ]}
                     ]
                 },
@@ -90,7 +89,7 @@ router.get('/', async (req, res) => {
             // When isClosed = 'false', res includes Dates WHERE
             // 'Dates'.'isClosed': 0 AND 'File'.'isClosed': 0 AND all other parameters are met.
             criticalDates = await Dates.findAndCountAll({
-                where: { ...queryWhere, isClosed: 0, '$File.isClosed$': 0 },
+                where: { ...queryWhere, isClosed: 0, '$File.status$': 'Open' },
                 include: queryInclude,
                 order: queryOrder,
                 offset: offset,

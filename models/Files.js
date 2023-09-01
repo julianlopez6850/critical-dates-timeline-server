@@ -9,8 +9,8 @@ module.exports = (sequelize, DataTypes) => {
             type: DataTypes.STRING,
             allowNull: false,
         },
-        isClosed: { // 0 = closed, 1 = open
-            type: DataTypes.TINYINT,
+        status: { // ex.: 'Open', 'Closed', or 'Cancelled'
+            type: DataTypes.STRING,
             allowNull: false,
         },
         address: { // ex.: '1234 N John Doe Street, Unit 123, Miami, FL 33155'
