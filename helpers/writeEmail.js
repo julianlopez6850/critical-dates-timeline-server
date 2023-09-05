@@ -9,7 +9,7 @@ const writeEmail = async (recipient) => {
         `<a href=${process.env.URL}>You can also view it on the web at ${process.env.URL}!</a><br/><br/>`
     
     const closedFiles = await Files.findAll({
-        where: { isClosed: 1 }
+        where: { [Op.not]: [{ status: 'Open' }] }
     });
 
     var closedFileNumbers = []
@@ -83,7 +83,7 @@ const writeEmail = async (recipient) => {
 
             if(fileInfo) {
                 for(const info in fileInfo.dataValues) {
-                    if(info === 'isClosed')
+                    if(info === 'status')
                         date.dataValues['isFileClosed'] = fileInfo.dataValues[info]
                     else
                         date.dataValues[`${info}`] = fileInfo.dataValues[info]
