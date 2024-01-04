@@ -243,6 +243,8 @@ router.put('/', async (req, res) => {
             for(const date of dates) {
                 customLog.messageLog(`Checking ${updatedFile.fileNumber} ${date.prefix}${date.type} date...`);
                 customLog.infoLog(`Passed Date info: { date: ${date.date}, isClosed: ${date.isClosed}, calculatedDate: ${date.calculatedDate} }.`);
+
+                // Delete an existing date if it was removed by the user.
                 if(!date.date) {
                     await Dates.findOne({
                         where: {
@@ -259,6 +261,7 @@ router.put('/', async (req, res) => {
                     continue;
                 }
 
+                // Create a new Date or Update an existing Date if necessary.
                 await Dates.findOne({
                     where: {
                         fileNumber: updatedFile.fileNumber,
@@ -279,7 +282,7 @@ router.put('/', async (req, res) => {
                         });
                         return;
                     }
-                    if(existingDate.date === date.date && existingDate.isClosed === date.isClosed && existingDate.calculatedDate === date.calculatedDate) {
+                    if(existingDate.date === date.date && existingDate.isClosed == date.isClosed && existingDate.calculatedDate === date.calculatedDate) {
                         customLog.successLog(`${updatedFile.fileNumber} ${date.prefix}${date.type} DATE: NOTHING TO DO (No changes made to existing date). Continuing...`);
                         return;
                     }
