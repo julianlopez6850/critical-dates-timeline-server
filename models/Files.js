@@ -17,6 +17,10 @@ module.exports = (sequelize, DataTypes) => {
             type: DataTypes.STRING,
             allowNull: false,
         },
+        county: { // ex.: 'Miami-Dade'
+            type: DataTypes.STRING,
+            allowNull: false,
+        },
         folioNo: { // ex.: '01-1234-56-789'
             type: DataTypes.STRING,
             allowNull: false,
