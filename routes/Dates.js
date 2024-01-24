@@ -46,8 +46,10 @@ router.get('/', async (req, res) => {
             )
         }
 
-        // Order the resulting data according to the defined sort column and direction
-        // (if sort is not defined, order is defaulted to Ascending by 'Date'.'date').
+        // Order the resulting data according to the defined sort column and direction. 
+        // Secondary ordering by fileNumber, then date.
+        // ex. if sortBy='Buyer' & sortDir='DESC' -> 'ORDER BY 'File'.buyer, fileNumber, date DESC'
+        // (if sort is not defined, order is defaulted to Ascending by 'Date'.'date', then 'Date'.'fileNumber').
         var sortTable = 'Dates';
         var sortBy = 'Date';
         var sortDir = 'ASC';
@@ -59,12 +61,11 @@ router.get('/', async (req, res) => {
                 sortTable = 'Files';
             sortDir = splitSort[1];
         }
-
-        const queryOrder = [
-            sortTable === 'Dates' ?
-            [ sortBy, sortDir ] :
-            [ Files, sortBy, sortDir ]
-        ];
+        
+        const queryOrder = sortTable === 'Dates' ? (
+            [[`date`, sortDir], ['fileNumber', sortDir]] ) : (
+            [[ Files, sortBy, sortDir ], ['fileNumber', sortDir], [`date`, sortDir]]
+        );
 
         var criticalDates = [];
         if(isClosed === 'true') {
