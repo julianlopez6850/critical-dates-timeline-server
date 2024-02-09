@@ -1,8 +1,11 @@
 const express = require('express');
 const app = express();
 const cors = require("cors");
+const http = require('http');
+const { Server } = require('socket.io');
 const Bree = require('bree');
 const cookieParser = require("cookie-parser");
+
 const { validateToken } = require('./jsonWebTokens');
 const customLog = require('./helpers/customLog');
 const { requestInfoLogger, endpointLogger } = require('./helpers/infoLoggers');
@@ -45,10 +48,35 @@ const bree = new Bree({
 
 bree.start();
 
+const server = http.createServer(app);
+const io = new Server(server, {
+    cors: {
+        credentials: true,
+        origin: originURLs
+    }
+});
+
+io.on('connection', (socket) => {
+    customLog.socketLog(`USER CONNECTED: ${socket.id}`);
+    socket.once('join_room', user => {
+        customLog.socketLog(`USER JOINED ROOM: ${user} - ${socket.id}`);
+        socket.join('all');
+    });
+
+    socket.on('update_others', data => {
+        customLog.socketLog(`Data has been changed by user: ${socket.id}:`);
+        socket.to('all').emit('receive_update', data);
+    });
+
+    socket.on('disconnect', () => {
+        customLog.socketLog(`USER DISCONNECTED, ${socket.id}`);
+    });
+});
+app.set('socket', io);
+
 db.sequelize.sync().then(() => {
-    app.listen(process.env.PORT || 5000, () => {
+    server.listen(process.env.PORT || 5000, () => {
         customLog.runLog('Server running on port 5000');
         customLog.runLog(`Server will process requests from the following origins: ${JSON.stringify(originURLs)}`);
     })
 });
-
