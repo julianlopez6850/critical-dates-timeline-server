@@ -108,7 +108,7 @@ router.post('/', async (req, res) => {
             await Dates.create({
                 date: newFile.loanApproval,
                 fileNumber: newFile.fileNumber,
-                type: 'Loan ✓',
+                type: 'Loan Approval',
                 prefix: '',
                 isClosed: newFile.isClosedLoanApproval,
                 calculatedDate: Object.keys(newFile.isCalculatedLoanApproval).length > 0 ?
@@ -218,7 +218,7 @@ router.put('/', async (req, res) => {
                     calculatedDate: JSON.stringify(isCalculatedDepositSecond) || defaultCalculatedDate
                 },
                 {
-                    type: 'Loan ✓',
+                    type: 'Loan Approval',
                     date: loanApproval,
                     isClosed: isClosedLoanApproval,
                     prefix: '',
