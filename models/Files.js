@@ -1,7 +1,7 @@
 module.exports = (sequelize, DataTypes) => {
     const Files = sequelize.define("Files", {
         fileNumber: { // ex.: 23001
-            type: DataTypes.NUMERIC,
+            type: DataTypes.STRING,
             allowNull: false,
             primaryKey: true,
         },
