@@ -34,7 +34,7 @@ router.get('/', async (req, res) => {
         // Include info of the File that each Date belongs to.
         const queryInclude =  {
             model: Files,
-            attributes: ['buyer', 'seller', 'address', 'whoRepresenting', 'isPurchase', 'status']
+            attributes: ['fileRef', 'buyer', 'seller', 'address', 'whoRepresenting', 'isPurchase', 'status']
         };
 
         if(dealType && dealType !== '') {
