@@ -13,7 +13,10 @@ const customLog = require('../helpers/customLog');
 // (If NO query parameters are passed, ALL Dates in database are returned).
 router.get('/', async (req, res) => {
     try {
-        const { startDate, endDate, type, isClosed, sort, dealType, limit = 10000, pageNum = 1} = req.query;
+        const { startDate, endDate, type, isClosed, sort, dealType, limit = 10000, pageNum = 1, include } = req.query;
+        var includeArr = []
+        if(include)
+            includeArr = include.split(',');
 
         if(limit && pageNum) {
             offset = parseInt(limit) * (Math.max(parseInt(pageNum), 1) - 1);
@@ -34,7 +37,15 @@ router.get('/', async (req, res) => {
         // Include info of the File that each Date belongs to.
         const queryInclude =  {
             model: Files,
-            attributes: ['fileRef', 'buyer', 'seller', 'address', 'whoRepresenting', 'isPurchase', 'status']
+            attributes: [
+                'fileRef',
+                'buyer',
+                'seller',
+                'address',
+                'whoRepresenting',
+                'isPurchase',
+                'status'
+            ].concat(includeArr)
         };
 
         if(dealType && dealType !== '') {

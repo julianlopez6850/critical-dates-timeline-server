@@ -1,14 +1,29 @@
 const express = require('express');
 const router = express.Router();
 const { Files, Dates } = require('../models');
-const Sequelize = require('sequelize');
+const sequelize = require('sequelize');
 const customLog = require('../helpers/customLog');
+const Op = sequelize.Op
 
 // Get all Files.
 // Only return attributes: ['fileNumber', 'fileRef', 'buyer', 'seller', 'address', 'status'] for each File.
 router.get('/all', async (req, res) => {
+    const { include } = req.query;
+    var includeArr = []
+    if(include)
+        includeArr = include.split(',');
+    
     customLog.messageLog('Retrieving info for all files...');
-    const files = await Files.findAll({ attributes: ['fileNumber', 'fileRef', 'buyer', 'seller', 'address', 'status'] });
+    const files = await Files.findAll({
+        attributes: [
+            'fileNumber',
+            'fileRef',
+            'buyer',
+            'seller',
+            'address',
+            'status'
+        ].concat(includeArr)}
+    );
 
     customLog.successLog('Successfully sent info for all files.');
     return res.status(200).json({ files: files });
