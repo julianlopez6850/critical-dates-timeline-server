@@ -22,8 +22,9 @@ router.get('/all', async (req, res) => {
             'seller',
             'address',
             'status'
-        ].concat(includeArr)}
-    );
+        ].concat(includeArr),
+        order: [['fileNumber', 'DESC']]
+    });
 
     customLog.successLog('Successfully sent info for all files.');
     return res.status(200).json({ files: files });

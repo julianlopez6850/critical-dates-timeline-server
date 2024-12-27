@@ -1,6 +1,6 @@
 {
   "name": "critical-dates-schedule-server",
-  "version": "3.3.0",
+  "version": "3.3.3",
   "description": "",
   "main": "index.js",
   "scripts": {
